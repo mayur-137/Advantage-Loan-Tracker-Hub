@@ -222,7 +222,7 @@ tr.bk-open td { background: var(--accent-soft); }
 /* Admin view of someone else's loan: everything shows, nothing can be entered, saved, uploaded or deleted. */
 body.superview .panel:has(#quick-form, #up-form, #bal-form, #bulk-text, #lk-set-form),
 body.superview #del-panel, body.superview #cb-now, body.superview label:has(#bk-file), body.superview #share-copy,
-body.superview #share-body button, body.superview #sm-eye, body.superview #lk-form,
+body.superview #share-body button, body.superview #sm-eye, body.superview #inv-form, body.superview #lk-form,
 body.superview .wrap form button[type="submit"], body.superview form.edit-only { display: none !important; }
 /* Admin dashboard */
 .adm-card { background: var(--surface); border-radius: 28px; padding: 32px; display: grid; gap: 18px; min-width: 0; }
@@ -277,7 +277,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           <div class="acct-head">
             <div class="acct-name" id="acct-name"></div>
             <div class="small muted acct-email" id="acct-email"></div>
-            <span class="chip" id="viewer-chip" hidden>View only</span>
+            <span class="chip" id="viewer-chip" hidden>Viewer</span>
           </div>
           <button type="button" role="menuitem" id="admin-btn" hidden>Admin dashboard</button>
           <button type="button" role="menuitem" id="myloans-btn" hidden>My loans</button>
@@ -578,7 +578,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     </div>
     <div class="panel edit-only owner-only" id="lk-panel">
       <div class="panel-head"><h2>Salary password</h2><span class="small muted" id="lk-state"></span></div>
-      <p class="small muted" style="margin:0"><b>Show salary</b> needs a password: if none is set yet you set one first, then the salary unlocks; after that it asks for it each time. After you unlock, the salary stays visible until you close the tab, tap Hide, or leave the page idle for 5 minutes. It hides what is on screen; people signed in as owner or admin can still read the salary in the database.</p>
+      <p class="small muted" style="margin:0"><b>Show salary</b> needs a password: if none is set yet you set one first, then the salary unlocks; after that it asks for it each time. After you unlock, the salary stays visible until you close the tab, tap Hide, or leave the page idle for 5 minutes. It hides what is on screen; people signed in as the owner or an editor can still read the salary in the database.</p>
       <form id="lk-set-form" class="row">
         <label class="field lkx" id="lk-cur-wrap" hidden><span>Current password</span><input id="lk-cur" type="password" autocomplete="current-password"></label>
         <label class="field"><span>New password (6+ characters)</span><input id="lk-new" type="password" autocomplete="new-password"></label>
@@ -657,8 +657,18 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   <section data-panel="settings" class="stack" hidden>
     <div class="panel edit-only" id="share-panel" hidden>
       <div class="panel-head"><h2>Sharing</h2><button class="btn ghost" type="button" id="share-copy">Copy link</button></div>
-      <p class="small muted" style="margin:0">Send the link to someone. They sign in with Google and ask for access. Once you approve, they can see this tracker but can't change anything, and they never see your salary. <b>Make admin</b> lets a person change everything and see your salary too (not backups or this Sharing list); remove admin to take it back. Remove someone to cut their access straight away.</p>
-      <div class="tablebox"><table><thead><tr><th>Person</th><th>Status</th><th>Asked on</th><th></th></tr></thead><tbody id="share-body"></tbody></table></div>
+      <p class="small muted" style="margin:0">Give a family member or anyone you trust access to this loan: invite them by email, or copy the link and approve them when they ask. A <b>Viewer</b> can see the loan but can't change anything, and never sees your salary, Smart payoff, Tax or Spending. An <b>Editor</b> can change everything and sees your salary too (not backups or this Sharing list). You can switch someone between Viewer and Editor, or remove them, at any time.</p>
+      <form class="row" id="inv-form" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end">
+        <label class="field" style="flex:1 1 240px"><span>Invite by email (their Google account)</span><input id="inv-email" type="email" autocomplete="off" placeholder="name@gmail.com" required></label>
+        <label class="field"><span>Role</span><select id="inv-role"><option value="viewer">Viewer: can only see</option><option value="admin">Editor: can change everything</option></select></label>
+        <button class="btn" type="submit" id="inv-go">Invite</button>
+      </form>
+      <p class="small" id="inv-err" style="margin:0;color:var(--bad)" hidden></p>
+      <div id="inv-done" class="small" style="padding:10px 12px;border-radius:8px;background:var(--accent-soft);display:grid;gap:8px" hidden>
+        <span id="inv-done-text"></span>
+        <div><button class="btn ghost" type="button" id="inv-copy">Copy link</button> <span class="muted">Paste it in Gmail, WhatsApp or any app to let them know.</span></div>
+      </div>
+      <div class="tablebox"><table><thead><tr><th>Person</th><th>Role</th><th>Added</th><th></th></tr></thead><tbody id="share-body"></tbody></table></div>
     </div>
     <div class="panel">
       <h2>Loan details</h2>
@@ -2870,7 +2880,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     }
     const aa = (a.parts.access || {}).rows, ab = (b.parts.access || {}).rows;
     if (aa && ab) {
-      const who = (r) => (r.data.email || r.id) + " (" + (r.data.status === "approved" ? (r.data.role === "admin" ? "admin" : "can view") : r.data.status) + ")";
+      const who = (r) => (r.data.email || r.id) + " (" + (r.data.status === "approved" ? (r.data.role === "admin" ? "editor" : "viewer") : r.data.status) + ")";
       const ma = new Map(aa.map((r) => [r.id, r])), mb = new Map(ab.map((r) => [r.id, r]));
       aa.forEach((r) => {
         if (!mb.has(r.id)) out.push(["Sharing: added", "", who(r)]);
@@ -2908,7 +2918,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     const priv = pv ? kv([["Tax", bkPrivate("tax", pv.tax)], ["Goal", bkPrivate("goal", pv.goal)], ["Categories", bkPrivate("categories", pv.categories)], ["Salary password", pv.lock && pv.lock.hash ? "set" : "not set"]])
       : "<p class='small muted' style='margin:0'>Not in this backup (made before these were backed up).</p>";
     const acc = (cur.parts.access || {}).rows;
-    const share = acc ? (acc.length ? "<ul class='bk-list'>" + acc.map((r) => "<li>" + esc((r.data.email || r.id) + " · " + (r.data.status === "approved" ? (r.data.role === "admin" ? "admin" : "can view") : r.data.status)) + "</li>").join("") + "</ul>" : "<p class='small muted' style='margin:0'>Nobody.</p>")
+    const share = acc ? (acc.length ? "<ul class='bk-list'>" + acc.map((r) => "<li>" + esc((r.data.email || r.id) + " · " + (r.data.status === "approved" ? (r.data.role === "admin" ? "editor" : "viewer") : r.data.status)) + "</li>").join("") + "</ul>" : "<p class='small muted' style='margin:0'>Nobody.</p>")
       : "<p class='small muted' style='margin:0'>Not in this backup.</p>";
     return "<div class='bk-head'><h3>Backup of " + esc(when) + "</h3><span class='small muted'>" + esc(backupLabel(cur.id)) + (h.hash ? " · " + esc(h.hash.slice(0, 12)) : "") + "</span></div>" +
       "<div class='bk-changes-box'><b>Changes since the backup before</b>" + changes + "</div>" +
@@ -2990,17 +3000,19 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   // ---------- sharing (owner) ----------
   function renderSharing() {
     if ($("share-panel").hidden) return;
-    const list = state.access.slice().sort((a, b) => (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1) || ((a.requestedAt || "") < (b.requestedAt || "") ? 1 : -1));
-    const chip = { pending: "<span class='chip warn'>Waiting</span>", approved: "<span class='chip good'>Can view</span>", admin: "<span class='chip good'>Admin</span>", denied: "<span class='chip bad'>Declined</span>" };
+    const added = (a) => a.invitedAt || a.requestedAt || "";
+    const list = state.access.slice().sort((a, b) => (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1) || (added(a) < added(b) ? 1 : -1));
+    // Stored role "admin" is shown as Editor (the app's own Admin is someone else: the administrator).
+    const chip = { pending: "<span class='chip warn'>Waiting</span>", approved: "<span class='chip good'>Viewer</span>", admin: "<span class='chip good'>Editor</span>", denied: "<span class='chip bad'>Declined</span>" };
     const btn = (act, id, label) => "<button class='link' type='button' style='color:var(--accent)' data-acc='" + act + "' data-id='" + esc(id) + "'>" + label + "</button>";
     $("share-body").innerHTML = list.length ? list.map(a =>
-      "<tr><td style='font-family:var(--font-body);white-space:normal'>" + (a.name ? esc(a.name) + "<br>" : "") + "<span class='small muted'>" + esc(a.email || a.id) + "</span></td><td>" + (a.status === "approved" && a.role === "admin" ? chip.admin : chip[a.status] || "") +
-      "</td><td>" + (a.requestedAt ? fmtDay(toDay(a.requestedAt.slice(0, 10))) : "") + "</td><td>" +
+      "<tr><td style='font-family:var(--font-body);white-space:normal'>" + (a.name ? esc(a.name) + "<br>" : "") + "<span class='small muted'>" + esc(a.email || a.id) + "</span>" + (a.invitedAt ? "<br><span class='small muted'>Invited by you</span>" : "") + "</td><td>" + (a.status === "approved" && a.role === "admin" ? chip.admin : chip[a.status] || "") +
+      "</td><td>" + (added(a) ? fmtDay(toDay(added(a).slice(0, 10))) : "") + "</td><td>" +
       (a.status !== "approved" ? btn("approved", a.id, "Approve") : "") +
       (a.status === "pending" ? btn("denied", a.id, "Decline") : "") +
-      (a.status === "approved" ? (a.role === "admin" ? btn("viewer", a.id, "Remove admin") : btn("admin", a.id, "Make admin")) : "") +
+      (a.status === "approved" ? (a.role === "admin" ? btn("viewer", a.id, "Make viewer") : btn("admin", a.id, "Make editor")) : "") +
       (a.status !== "pending" ? "<button class='link' type='button' data-acc='remove' data-id='" + esc(a.id) + "'>Remove</button>" : "") +
-      "</td></tr>").join("") : '<tr><td colspan="4" class="empty">Nobody has asked yet. Copy the link and send it to the person.</td></tr>';
+      "</td></tr>").join("") : '<tr><td colspan="4" class="empty">Not shared with anyone yet. Invite someone by email above, or copy the link and send it.</td></tr>';
   }
   $("share-body").addEventListener("click", async (e) => {
     const b = e.target.closest("button[data-acc]"); if (!b || !db) return;
@@ -3014,17 +3026,68 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           return;
         }
       }
+      const cur = state.access.find((x) => x.id === id) || {};
       if (act === "remove") {
         await db.collection("access").doc(id).delete();
+        await inboxDel(id);
         toast("Removed. They can't see the tracker any more.");
       } else if (act === "admin" || act === "viewer") {
         await db.collection("access").doc(id).update({ role: act, decidedAt: new Date().toISOString() });
-        toast(act === "admin" ? "Done. They are an admin now." : "Admin removed. They can only view now.");
+        await inboxPut(id, act);
+        toast(act === "admin" ? "Done. They are an editor now: they can change everything." : "Done. They are a viewer now: they can only see.");
       } else {
         await db.collection("access").doc(id).update({ status: act, decidedAt: new Date().toISOString() });
+        if (act === "approved") await inboxPut(id, cur.role === "admin" ? "admin" : "viewer"); else await inboxDel(id);
         toast(act === "approved" ? "Approved. They can see the tracker now." : "Declined.");
       }
     } catch (err) { toast("Couldn't update. Check your connection and try again."); }
+  });
+  // "Shared with me" pointer (inbox/<email>/loans/<loan>), written by the owner whenever someone is given access.
+  function inboxPut(email, role) {
+    const h = loanHead || {};
+    return firebase.firestore().doc("inbox/" + email + "/loans/" + LOAN_ID).set({ name: h.name || "Home loan", bank: h.bank || "", ownerEmail: h.ownerEmail || "",
+      ownerName: ownerName || "", role: role === "admin" ? "admin" : "viewer", sharedAt: new Date().toISOString() });
+  }
+  function inboxDel(email) { return firebase.firestore().doc("inbox/" + email + "/loans/" + LOAN_ID).delete().catch(() => {}); }
+  // ---------- invite by email (owner) ----------
+  // Gives access straight away (status approved) and puts the loan in their "Shared with me". Nothing is sent by the app:
+  // the owner copies the message and sends it however they like.
+  let invLast = null;
+  const invMsg = (t) => { $("inv-err").textContent = t; $("inv-err").hidden = !t; };
+  $("inv-role").addEventListener("change", () => { $("inv-go").classList.remove("confirm"); $("inv-go").textContent = "Invite"; });
+  $("inv-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!db || !LOAN_ID) return;
+    const email = $("inv-email").value.trim().toLowerCase(), role = $("inv-role").value === "admin" ? "admin" : "viewer";
+    const me = ((firebase.auth().currentUser || {}).email || "").toLowerCase();
+    invMsg(""); $("inv-done").hidden = true;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { invMsg("Enter a valid email address."); return; }
+    if (email === me) { invMsg("That's you: you already own this loan."); return; }
+    const had = state.access.find((x) => x.id === email);
+    if (had && had.status === "approved") { invMsg(email + " already has access as " + (had.role === "admin" ? "an editor" : "a viewer") + ". Change it in the table below."); return; }
+    const go = $("inv-go");
+    if (role === "admin" && !go.classList.contains("confirm")) {
+      go.classList.add("confirm"); go.textContent = "Tap again: they can change everything";
+      setTimeout(() => { if (go.classList.contains("confirm")) { go.classList.remove("confirm"); go.textContent = "Invite"; } }, 4000);
+      return;
+    }
+    go.classList.remove("confirm"); go.textContent = "Invite"; go.disabled = true;
+    try {
+      const now = new Date().toISOString();
+      await db.collection("access").doc(email).set({ email, status: "approved", role, invitedAt: now, decidedAt: now });
+      await inboxPut(email, role);
+      invLast = email;
+      $("inv-done-text").innerHTML = "Invited <b>" + esc(email) + "</b> as " + (role === "admin" ? "an <b>Editor</b>" : "a <b>Viewer</b>") +
+        ". They'll find this loan under <i>Shared with me</i> when they sign in with Google using this email.";
+      $("inv-done").hidden = false; $("inv-email").value = ""; $("inv-role").value = "viewer";
+    } catch (err) { invMsg("Couldn't invite. Check your connection and try again."); }
+    go.disabled = false;
+  });
+  $("inv-copy").addEventListener("click", () => {
+    const h = loanHead || {}, link = location.origin + "/?loan=" + encodeURIComponent(LOAN_ID);
+    const text = (ownerName || "I") + " shared a home loan tracker with you" + (h.name ? ": " + h.name : "") + ". Open it and sign in with Google" +
+      (invLast ? " as " + invLast : "") + ": " + link;
+    navigator.clipboard.writeText(text).then(() => toast("Copied. Paste it in Gmail, WhatsApp or any app.")).catch(() => toast(text));
   });
   $("share-copy").addEventListener("click", () => {
     const link = location.origin + "/?loan=" + encodeURIComponent(LOAN_ID);
@@ -3342,7 +3405,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       $("home-mine").innerHTML = mine.length ? mine.map(l => loanItem(l, l.deleting ? "Delete didn't finish: open to finish it" : (l.bank || ""))).join("")
         : "<li class='home-empty'>No loans yet. Add your first loan to start tracking it.</li>";
       $("home-shared-box").hidden = !shared.length;
-      $("home-shared").innerHTML = shared.map(l => loanItem(l, (l.bank ? l.bank + " · " : "") + "from " + (l.ownerName || l.ownerEmail || "the owner") + (l.role === "admin" ? " · admin" : " · view only"))).join("");
+      $("home-shared").innerHTML = shared.map(l => loanItem(l, (l.bank ? l.bank + " · " : "") + "from " + (l.ownerName || l.ownerEmail || "the owner") + (l.role === "admin" ? " · editor" : " · viewer"))).join("");
       if (!mine.length && !shared.length) openForm(true);
     }
     $("home").addEventListener("click", (e) => {
@@ -3440,14 +3503,14 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         const st = snap.exists ? snap.data().status : null;
         const role = snap.exists && snap.data().role === "admin" ? "admin" : "viewer";
         if (st === "approved") {
-          if (approved) { if (role !== approvedRole) location.reload(); return; } // made admin / admin removed while the page is open
+          if (approved) { if (role !== approvedRole) location.reload(); return; } // switched between viewer and editor while the page is open
           approved = true; approvedRole = role;
           rememberLoan(user, id);
           if (!head) fs.doc("loans/" + id).get().then((s) => showHead(s.exists ? s.data() : null)).catch(() => {});
           if (role === "admin") {
-            // Admin: edits everything and sees salary like the owner; backups and Sharing stay owner-only.
+            // Editor (stored as role "admin"): edits everything and sees salary like the owner; backups and Sharing stay owner-only.
             document.body.classList.add("admin");
-            $("viewer-chip").textContent = "Admin";
+            $("viewer-chip").textContent = "Editor";
             $("viewer-chip").hidden = false;
             gate("loading");
             onFirstData = () => gate(null);
