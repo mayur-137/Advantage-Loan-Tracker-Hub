@@ -36,7 +36,7 @@ CONFIG = {
 # Google AdSense. Empty = no ad code anywhere. Fill "client" with the ca-pub-... id from AdSense; fill a slot with the
 # data-ad-slot number of an ad unit made in AdSense (Ads -> By ad unit -> Display ads) to show that unit.
 ADS = {
-    "client": "",
+    "client": "ca-pub-4795222843990222",
     "content": "",  # responsive unit inside public pages (landing, calculator, articles, guide)
     "rail": "",     # 160x600 unit for the side rails beside the tracker on wide screens (/app, /demo)
 }
