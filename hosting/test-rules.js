@@ -264,6 +264,7 @@ const cases = [
   tc("super can't delete a loan", "DENY", SUPER, "delete", "/loans/L1", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
   tc("super can't approve access", "DENY", SUPER, "update", `access/${FRIEND}`, { data: { status: "approved" }, existing: { status: "pending" } }),
   tc("super can't give itself access", "DENY", SUPER, "create", `access/${SUPER}`, { data: { email: SUPER, status: "approved", role: "admin" } }),
+  tc("super can't create a loan of his own", "DENY", SUPER, "create", "/loans/L9", { data: { ownerUid: uidOf(SUPER), ownerEmail: SUPER, name: "Mine", bank: "X", createdAt: "x", updatedAt: "x" } }),
   tc("super can't create a backup", "DENY", SUPER, "create", "backups/2026-11", { data: { month: "2026-11" } }),
   tc("super can't write backupsMeta", "DENY", SUPER, "update", "backupsMeta/dedupe", { data: { oldId: "a" }, existing: { oldId: "c" } }),
   tc("super can't write another user's profile", "DENY", SUPER, "update", `/users/${uidOf(OWNER)}`, { data: { lastLoanId: "x" }, existing: {} }),

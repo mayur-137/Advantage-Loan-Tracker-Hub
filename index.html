@@ -883,7 +883,6 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           <p class="gate-lead" style="max-width:60ch">Every user and every loan. Opening a loan shows the whole app as its owner sees it, read-only: nothing can be changed from here.</p>
         </div>
         <div class="gate-actions">
-          <button class="gate-btn text" type="button" id="adm-home">My loans</button>
           <button class="gate-btn text" type="button" id="adm-signout">Sign out</button>
         </div>
       </div>
@@ -3494,11 +3493,11 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     $("gate-switch").addEventListener("click", signOut); // signs out; the page then offers "Sign in with Google" again
     $("signout").addEventListener("click", signOut);
     $("home-signout").addEventListener("click", signOut);
-    // "My loans" (account menu, and the no-access screens) goes back to the list of loans.
-    const goHome = () => { location.href = "/?home"; };
+    // "My loans" (account menu, and the no-access screens) goes back to the list of loans; the administrator has no
+    // loans of his own, so for him it is the admin dashboard.
+    const goHome = () => { location.href = isSuper(firebase.auth().currentUser) ? "/?admin" : "/?home"; };
     $("myloans-btn").addEventListener("click", goHome);
     $("gate-home").addEventListener("click", goHome);
-    $("adm-home").addEventListener("click", goHome);
     $("adm-signout").addEventListener("click", signOut);
     $("terms-signout").addEventListener("click", signOut);
     $("help-btn").addEventListener("click", () => { acctMenu(false); window.open("/guide.html", "_blank", "noopener"); });
@@ -3536,14 +3535,18 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       const fs = fsdb();
       let loans, users;
       try {
-        const [lq, uq] = await Promise.all([fs.collection("loans").get(), fs.collection("users").get()]);
+        // Straight from the server: the dashboard should be current, and the offline copy can hang on documents it never held.
+        const [lq, uq] = await Promise.all([fs.collection("loans").get({ source: "server" }), fs.collection("users").get({ source: "server" })]);
         loans = lq.docs.map((d) => Object.assign({ id: d.id }, d.data()));
         users = uq.docs.map((d) => Object.assign({ uid: d.id }, d.data()));
       } catch (e) { $("adm-body").innerHTML = "<tr><td colspan='8' class='empty'>Couldn't load. Check your connection and reload the page.</td></tr>"; return; }
-      const sets = await Promise.all(loans.map((l) => fs.doc("loans/" + l.id + "/loan/settings").get().then((s) => s.exists ? s.data() : {}).catch(() => ({}))));
+      const sets = await Promise.all(loans.map((l) => fs.doc("loans/" + l.id + "/loan/settings").get({ source: "server" }).then((s) => s.exists ? s.data() : {}).catch(() => ({}))));
       loans.forEach((l, i) => { l.s = sets[i]; });
       // One entry per person: everyone who has signed in (users/<uid>), plus loan owners without a users document.
       const people = new Map();
+      // The administrator himself is not one of the users.
+      users = users.filter((u) => u.email !== FB.superAdmin);
+      loans = loans.filter((l) => l.ownerEmail !== FB.superAdmin);
       users.forEach((u) => { const e = u.email || u.uid; people.set(e, { email: e, seenAt: u.seenAt || "", loans: [] }); });
       loans.forEach((l) => { const e = l.ownerEmail || "?"; if (!people.has(e)) people.set(e, { email: e, seenAt: "", loans: [] }); people.get(e).loans.push(l); });
       admRows = Array.from(people.values()).sort((a, b) => (b.seenAt || "") < (a.seenAt || "") ? -1 : 1);
@@ -3646,7 +3649,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       const fs = fsdb();
       LOAN_ID = id; BASE = "loans/" + id + "/";
       const scoped = { collection: (c) => fs.collection(BASE + c), doc: (p) => fs.doc(BASE + p) };
-      $("myloans-btn").hidden = false;
+      $("myloans-btn").hidden = isSuper(user);
       gate("loading");
       let head = null;
       // Readable only by the owner and approved people; anyone else gets "permission denied" and the request flow.
@@ -3753,7 +3756,15 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       // Last seen (and the email, so the admin dashboard can list people who have no loan yet).
       userDoc(user).set({ email: user.email, seenAt: new Date().toISOString() }, { merge: true }).catch(() => {});
       const q = new URLSearchParams(location.search);
-      if (q.has("admin") && isSuper(user)) { showAdmin(user); return; }
+      // The administrator never gets loans of his own: the admin dashboard, or a user's loan opened from it (read-only).
+      if (isSuper(user)) {
+        $("gate-home").textContent = "Admin dashboard";
+        const lid = q.get("loan");
+        if (lid) { openLoan(user, lid); return; }
+        history.replaceState(null, "", "/?admin");
+        showAdmin(user);
+        return;
+      }
       const id = q.get("loan");
       if (id) { openLoan(user, id); return; }
       // No loan in the link: open the last one used, unless the person asked for the list.

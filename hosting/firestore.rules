@@ -57,8 +57,8 @@ service cloud.firestore {
       // (A loan that doesn't exist can be "read" as missing, so a deleted loan's link says "not found", not "ask for access".)
       allow get: if signedIn() && (resource == null || isSuper() || resource.data.ownerUid == request.auth.uid || isViewer(id));
       allow list: if signedIn() && (isSuper() || resource.data.ownerUid == request.auth.uid);
-      // Anyone signed in can start a loan of their own.
-      allow create: if signedIn()
+      // Anyone signed in can start a loan of their own, except the administrator (his account is for the dashboard only).
+      allow create: if signedIn() && !isSuper()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerEmail == me()
         && loanKeysOk()
