@@ -6,7 +6,7 @@
 // hash (made before daily backups) are never deleted.
 const crypto = require("crypto");
 
-const PROJECT = "advantage-loan-tracker";
+const PROJECT = "advantage-loan-tracker-hub";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
 const COLS = ["balances", "rates", "prepay", "statements", "txns", "disb", "loantx"];
 const PRIVATE = ["goal", "tax", "categories", "lock"];

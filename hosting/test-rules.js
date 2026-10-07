@@ -169,7 +169,7 @@ const cases = [
     source: { files: [{ name: "firestore.rules", content: fs.readFileSync(__dirname + "/firestore.rules", "utf8") }] },
     testSuite: { testCases: cases.map(c => c.tc) },
   };
-  const r = await fetch("https://firebaserules.googleapis.com/v1/projects/advantage-loan-tracker:test", {
+  const r = await fetch("https://firebaserules.googleapis.com/v1/projects/advantage-loan-tracker-hub:test", {
     method: "POST", headers: { Authorization: "Bearer " + access_token, "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
   const res = await r.json();

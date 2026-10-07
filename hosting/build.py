@@ -13,12 +13,12 @@ OUT = HERE / "public" / "index.html"
 
 SDK = "10.12.2"
 CONFIG = {
-    "apiKey": "AIzaSyCuP3Kl5yTjHVnGqNLHk2H1t8ScD06Im8M",
-    "authDomain": "advantage-loan-tracker.firebaseapp.com",
-    "projectId": "advantage-loan-tracker",
-    "storageBucket": "advantage-loan-tracker.firebasestorage.app",
-    "messagingSenderId": "813329014441",
-    "appId": "1:813329014441:web:0a63ded1bb8225e5ac13b8",
+    "apiKey": "AIzaSyDZLmmE8d7avaEveTxseuY2OWyw48lmXxI",
+    "authDomain": "advantage-loan-tracker-hub.firebaseapp.com",
+    "projectId": "advantage-loan-tracker-hub",
+    "storageBucket": "advantage-loan-tracker-hub.firebasestorage.app",
+    "messagingSenderId": "625022243493",
+    "appId": "1:625022243493:web:4a939bd67c70af64c6734c",
     # The owner gets the full tracker; anyone else must request access (see firestore.rules).
     "ownerEmail": "mayursavaliya150@gmail.com",
 }

@@ -1,11 +1,11 @@
 @echo off
-rem Builds the page from ..\index.html and publishes it to https://advantage-loan-tracker.web.app
+rem Builds the page from ..\index.html and publishes it to https://advantage-loan-tracker-hub.web.app
 set "PATH=%LOCALAPPDATA%\node-portable\node-v24.19.0-win-x64;%PATH%"
 cd /d "%~dp0"
 python build.py || goto :fail
 call npx firebase deploy --only hosting,firestore:rules || goto :fail
 echo.
-echo Live: https://advantage-loan-tracker.web.app
+echo Live: https://advantage-loan-tracker-hub.web.app
 pause
 exit /b 0
 :fail

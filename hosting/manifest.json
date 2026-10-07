@@ -1,7 +1,7 @@
 {
-  "name": "Advantage Loan Tracker",
+  "name": "Advantage Loan Tracker Hub",
   "short_name": "Loan Tracker",
-  "description": "Bank of Baroda Home Loan Advantage tracker: daily interest, savings offset and payoff plan.",
+  "description": "Tracker for savings-linked home loans from any bank: daily interest, savings offset and payoff plan.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
