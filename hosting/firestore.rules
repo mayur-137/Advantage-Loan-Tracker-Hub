@@ -1,83 +1,121 @@
 rules_version = '2';
 
+// Advantage Loan Tracker Hub: many users, many loans. Everything a tracker keeps lives under loans/<loanId>.
+// Each loan has its own owner (loans/<id>.ownerUid) and its own sharing list (loans/<id>/access/<email>):
+// approved people can view it; ones the owner made an admin can also change it. Nobody can see a loan
+// they are not the owner of or approved for.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
       return request.auth != null && request.auth.token.email_verified == true;
     }
-    function isOwner() {
-      return signedIn() && request.auth.token.email == "mayursavaliya150@gmail.com";
-    }
-    // Someone the owner approved in the Sharing panel (access/<their email>.status == "approved").
-    function isViewer() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/access/$(request.auth.token.email))
-        && get(/databases/$(database)/documents/access/$(request.auth.token.email)).data.status == "approved";
-    }
+    function me() { return request.auth.token.email; }
+    function loanPath(id) { return /databases/$(database)/documents/loans/$(id); }
+    function accessPath(id) { return /databases/$(database)/documents/loans/$(id)/access/$(me()); }
 
-    // The owner signed in with Google within the last 5 minutes (auth_time is when the Google sign-in happened,
-    // refreshed by "sign in again"). Changing the salary password needs this, so an already-open session on a
-    // shared or borrowed device cannot reset it without the owner's Google password.
+    function isOwner(id) {
+      return signedIn() && exists(loanPath(id)) && get(loanPath(id)).data.ownerUid == request.auth.uid;
+    }
+    // Someone the owner approved (access/<their email>.status == "approved"), by invite or by request.
+    function isViewer(id) {
+      return signedIn() && exists(accessPath(id)) && get(accessPath(id)).data.status == "approved";
+    }
+    // An approved person the owner made an admin (role == "admin"). Only the owner can set or clear role.
+    function isAdmin(id) {
+      return isViewer(id) && get(accessPath(id)).data.get("role", "") == "admin";
+    }
+    // The owner signed in with Google within the last 5 minutes (needed to change the salary password).
     function freshLogin() {
       return request.auth.token.auth_time > (request.time.toMillis() / 1000) - 300;
     }
-
-    // An approved person the owner made an admin (access/<their email>.role == "admin"). Only the owner can
-    // set or clear role (access updates are owner-only; a request can't carry a role).
-    function isAdmin() {
-      return isViewer()
-        && get(/databases/$(database)/documents/access/$(request.auth.token.email)).data.get("role", "") == "admin";
+    function loanKeysOk() {
+      return request.resource.data.keys().hasOnly(["ownerUid", "ownerEmail", "name", "bank", "createdAt", "updatedAt"]);
+    }
+    // Backups: one can be deleted only when it is an exact copy (same hash) of the newer backup named in
+    // loans/<id>/backupsMeta/dedupe; its parts go first, so its head is still there to check.
+    function dedupeOf(id, b) {
+      let m = get(/databases/$(database)/documents/loans/$(id)/backupsMeta/dedupe).data;
+      let mine = get(/databases/$(database)/documents/loans/$(id)/backups/$(b)).data.get("hash", "");
+      return m.oldId == b && m.newId != b && mine != ""
+        && get(/databases/$(database)/documents/loans/$(id)/backups/$(m.newId)).data.get("hash", "") == mine;
     }
 
-    // Tracker data. Approved viewers can read the shared collections only; salary (private/*),
-    // backups and the access list are never readable by them. The owner and admins write; admins also read
-    // private/*, but never touch backups or the access list, and cannot change the salary password
-    // (private/lock, a salted hash): only the owner writes that, and only right after a fresh Google sign-in.
-    match /{col}/{doc} {
-      allow read: if isOwner()
-        || (isAdmin() && !(col in ["backups", "access", "backupsMeta"]))
-        || (isViewer() && col in ["loan", "balances", "rates", "prepay", "statements", "txns", "disb", "loantx"]);
-      allow create, update: if !(col in ["backups", "access", "backupsMeta"])
-        && ((isOwner() && (!(col == "private" && doc == "lock") || freshLogin()))
-            || (isAdmin() && !(col == "private" && doc == "lock")));
-      // The settings documents can be changed but never deleted from the app (a lost copy is put back at the owner's login).
-      allow delete: if !(col in ["backups", "access", "backupsMeta"])
-        && !(col == "loan" && doc == "settings")
-        && !(col == "private" && (doc == "salary" || doc == "settingsMirror"))
-        && ((isOwner() && (!(col == "private" && doc == "lock") || freshLogin()))
-            || (isAdmin() && !(col == "private" && doc == "lock")));
+    // ---- the loan itself: who owns it, its name and bank ----
+    match /loans/{id} {
+      // Readable by the owner (also as a query: where ownerUid == my uid) and by approved people.
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || isViewer(id));
+      // Anyone signed in can start a loan of their own.
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerEmail == me()
+        && loanKeysOk();
+      // The owner renames it; admins only bump updatedAt. Ownership never moves.
+      allow update: if signedIn()
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.ownerEmail == resource.data.ownerEmail
+        && loanKeysOk()
+        && (resource.data.ownerUid == request.auth.uid
+            || (isAdmin(id) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["updatedAt"])));
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // Tracker data. Approved viewers can read the shared collections only; salary (private/*),
+      // backups and the access list are never readable by them. The owner and admins write; admins also read
+      // private/*, but never touch backups or the access list, and cannot change the salary password
+      // (private/lock, a salted hash): only the owner writes that, and only right after a fresh Google sign-in.
+      match /{col}/{doc} {
+        allow read: if isOwner(id)
+          || (isAdmin(id) && !(col in ["backups", "access", "backupsMeta"]))
+          || (isViewer(id) && col in ["loan", "balances", "rates", "prepay", "statements", "txns", "disb", "loantx"]);
+        allow create, update: if !(col in ["backups", "access", "backupsMeta"])
+          && ((isOwner(id) && (!(col == "private" && doc == "lock") || freshLogin()))
+              || (isAdmin(id) && !(col == "private" && doc == "lock")));
+        // The settings documents can be changed but never deleted from the app.
+        allow delete: if !(col in ["backups", "access", "backupsMeta"])
+          && !(col == "loan" && doc == "settings")
+          && !(col == "private" && (doc == "salary" || doc == "settingsMirror"))
+          && ((isOwner(id) && (!(col == "private" && doc == "lock") || freshLogin()))
+              || (isAdmin(id) && !(col == "private" && doc == "lock")));
+      }
+
+      // Sharing list. Anyone signed in can ask for themselves (pending only) and see their own entry.
+      // Only the owner invites, approves, declines, removes, or makes someone an admin.
+      match /access/{email} {
+        allow read: if isOwner(id) || (signedIn() && me() == email);
+        allow create: if isOwner(id) || (signedIn()
+          && me() == email
+          && request.resource.data.email == email
+          && request.resource.data.status == "pending"
+          && request.resource.data.keys().hasOnly(["email", "name", "status", "requestedAt"]));
+        allow update, delete: if isOwner(id);
+      }
+
+      match /backups/{b} {
+        allow read, create: if isOwner(id);
+        allow delete: if isOwner(id) && dedupeOf(id, b);
+      }
+      match /backups/{b}/parts/{part} {
+        allow read, create: if isOwner(id);
+        allow delete: if isOwner(id) && dedupeOf(id, b);
+      }
+      match /backupsMeta/{doc} {
+        allow read, write: if isOwner(id);
+      }
     }
 
-    // Access requests: anyone signed in can ask for themselves (pending only) and see their own request.
-    // Only the owner approves, declines, removes, or makes someone an admin.
-    match /access/{email} {
-      allow read: if isOwner() || (signedIn() && request.auth.token.email == email);
-      allow create: if isOwner() || (signedIn()
-        && request.auth.token.email == email
-        && request.resource.data.email == email
-        && request.resource.data.status == "pending"
-        && request.resource.data.keys().hasOnly(["email", "name", "status", "requestedAt"]));
-      allow update, delete: if isOwner();
+    // ---- "Shared with me": a pointer per loan, written by that loan's owner when they invite or approve someone ----
+    match /inbox/{email}/loans/{id} {
+      allow read: if (signedIn() && me() == email) || isOwner(id);
+      allow create, update: if isOwner(id)
+        && request.resource.data.keys().hasOnly(["name", "bank", "ownerEmail", "ownerName", "role", "sharedAt"]);
+      allow delete: if (signedIn() && me() == email) || isOwner(id);
     }
 
-    // Backups can be read and created by the owner and are never changed. One can be deleted only when it is an exact copy
-    // (same hash) of the newer backup named in backupsMeta/dedupe; its parts go first, so its head is still there to check.
-    function dedupeOf(id) {
-      let m = get(/databases/$(database)/documents/backupsMeta/dedupe).data;
-      let mine = get(/databases/$(database)/documents/backups/$(id)).data.get("hash", "");
-      return m.oldId == id && m.newId != id && mine != ""
-        && get(/databases/$(database)/documents/backups/$(m.newId)).data.get("hash", "") == mine;
-    }
-    match /backups/{id} {
-      allow read, create: if isOwner();
-      allow delete: if isOwner() && dedupeOf(id);
-    }
-    match /backups/{id}/parts/{part} {
-      allow read, create: if isOwner();
-      allow delete: if isOwner() && dedupeOf(id);
-    }
-    match /backupsMeta/{doc} {
-      allow read, write: if isOwner();
+    // ---- per-user settings (last opened loan, saved statement layouts) ----
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+      match /{sub}/{doc} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
     }
   }
 }

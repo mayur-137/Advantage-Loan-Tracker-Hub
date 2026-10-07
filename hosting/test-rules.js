@@ -4,31 +4,45 @@ const fs = require("fs");
 const auth = require("firebase-tools/lib/auth");
 const { configstore } = require("firebase-tools/lib/configstore");
 
-const OWNER = "mayursavaliya150@gmail.com";
+// Every case runs against loan L1, owned by OWNER, unless its path starts with "/" (then it is from the database root).
+const OWNER = "owner@example.com";
+const OWNER2 = "owner2@example.com"; // owns loan L2
 const FRIEND = "friend@example.com";
 const STRANGER = "stranger@example.com";
 const ADMIN = "admin@example.com";
 const D = "/databases/(default)/documents";
+const L = "loans/L1";
+const uidOf = (email) => "u-" + email;
+const full = (path) => path.startsWith("/") ? `${D}${path}` : `${D}/${L}/${path}`;
 
 // authAge = seconds since the Google sign-in (auth_time); default is "just signed in".
-const user = (email, authAge = 0) => ({ uid: "u-" + email, token: { email, email_verified: true, auth_time: Math.floor(Date.now() / 1000) - authAge } });
-// Pretend access/<email> exists with this status (or doesn't exist when status is null).
-const accessMocks = (email, status, role) => [
-  { function: "exists", args: [{ exactValue: `${D}/access/${email}` }], result: { value: status !== null } },
-  { function: "get", args: [{ exactValue: `${D}/access/${email}` }], result: status === null ? { undefined: {} } : { value: { data: role ? { status, role } : { status } } } },
+const user = (email, authAge = 0) => ({ uid: uidOf(email), token: { email, email_verified: true, auth_time: Math.floor(Date.now() / 1000) - authAge } });
+const getMock = (path, data) => ({ function: "get", args: [{ exactValue: full(path) }], result: data === null ? { undefined: {} } : { value: { data } } });
+const existsMock = (path, yes) => ({ function: "exists", args: [{ exactValue: full(path) }], result: { value: yes } });
+// The loans: L1 is OWNER's, L2 is OWNER2's.
+const loanMocks = () => [
+  existsMock("/loans/L1", true), getMock("/loans/L1", { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" }),
+  existsMock("/loans/L2", true), getMock("/loans/L2", { ownerUid: uidOf(OWNER2), ownerEmail: OWNER2, name: "Flat" }),
+];
+// Pretend loans/<loan>/access/<email> exists with this status (or doesn't exist when status is null).
+const accessMocks = (email, status, role, loan = "L1") => [
+  existsMock(`/loans/${loan}/access/${email}`, status !== null),
+  getMock(`/loans/${loan}/access/${email}`, status === null ? null : (role ? { status, role } : { status })),
 ];
 const tc = (name, expectation, who, method, path, opts = {}) => ({
   name,
   tc: {
     expectation,
-    request: Object.assign({ auth: who ? user(who, opts.authAge || 0) : null, path: `${D}/${path}`, method, time: new Date().toISOString() }, opts.data ? { resource: { data: opts.data } } : {}),
+    request: Object.assign({ auth: who ? user(who, opts.authAge || 0) : null, path: full(path), method, time: new Date().toISOString() }, opts.data ? { resource: { data: opts.data } } : {}),
     resource: opts.existing ? { data: opts.existing } : undefined,
-    functionMocks: (who && who !== OWNER ? accessMocks(who, opts.status === undefined ? null : opts.status, opts.role) : []).concat(opts.mocks || []),
+    functionMocks: loanMocks()
+      .concat(who ? accessMocks(who, opts.status === undefined ? null : opts.status, opts.role) : [])
+      .concat(who ? accessMocks(who, opts.status2 === undefined ? null : opts.status2, opts.role2, "L2") : [])
+      .concat(opts.mocks || []),
   },
 });
 
 // Mocks for the backup de-duplication rule: backupsMeta/dedupe and the two backup heads.
-const getMock = (path, data) => ({ function: "get", args: [{ exactValue: `${D}/${path}` }], result: data === null ? { undefined: {} } : { value: { data } } });
 const dd = (meta, oldHash, newHash) => [
   getMock("backupsMeta/dedupe", meta),
   getMock(`backups/${meta.oldId}`, oldHash === undefined ? {} : { hash: oldHash }),
@@ -160,6 +174,50 @@ const cases = [
   tc("owner can still delete a disbursement", "ALLOW", OWNER, "delete", "disb/2026-09-21_3200000", { existing: { amount: 3200000 } }),
   tc("viewer can't read salary password", "DENY", FRIEND, "get", "private/lock", { status: "approved" }),
   tc("stranger can't read salary password", "DENY", STRANGER, "get", "private/lock"),
+  // ---- many loans: each loan is its own world ----
+  tc("owner reads own loan head", "ALLOW", OWNER, "get", "/loans/L1", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("owner lists own loans", "ALLOW", OWNER, "list", "/loans/x", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("other owner can't read L1 head", "DENY", OWNER2, "get", "/loans/L1", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("approved reads loan head", "ALLOW", FRIEND, "get", "/loans/L1", { status: "approved", existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("pending can't read loan head", "DENY", STRANGER, "get", "/loans/L1", { status: "pending", existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("other owner can't read L1 settings", "DENY", OWNER2, "get", "loan/settings"),
+  tc("other owner can't write L1 balance", "DENY", OWNER2, "update", "balances/2026-10-05", { data: { amount: 1 }, existing: { amount: 0 } }),
+  tc("other owner can't read L1 salary", "DENY", OWNER2, "get", "private/salary"),
+  tc("other owner can't read L1 backups", "DENY", OWNER2, "get", "backups/2026-10"),
+  tc("other owner can't approve on L1", "DENY", OWNER2, "update", `access/${FRIEND}`, { data: { status: "approved" }, existing: { status: "pending" } }),
+  tc("L1 owner can't read L2 settings", "DENY", OWNER, "get", "/loans/L2/loan/settings"),
+  tc("L2 owner reads L2 settings", "ALLOW", OWNER2, "get", "/loans/L2/loan/settings"),
+  tc("L1 admin can't write L2", "DENY", ADMIN, "update", "/loans/L2/balances/x", { status: "approved", role: "admin", data: { amount: 1 }, existing: { amount: 0 } }),
+  tc("L1 viewer can't read L2", "DENY", FRIEND, "get", "/loans/L2/loan/settings", { status: "approved" }),
+  tc("L2 viewer can't read L1", "DENY", FRIEND, "get", "loan/settings", { status2: "approved" }),
+  tc("L2 viewer reads L2", "ALLOW", FRIEND, "get", "/loans/L2/loan/settings", { status2: "approved" }),
+  tc("anyone signed in creates own loan", "ALLOW", STRANGER, "create", "/loans/L9", { data: { ownerUid: uidOf(STRANGER), ownerEmail: STRANGER, name: "My loan", bank: "SBI", createdAt: "x", updatedAt: "x" } }),
+  tc("can't create a loan for someone else", "DENY", STRANGER, "create", "/loans/L9", { data: { ownerUid: uidOf(FRIEND), ownerEmail: STRANGER, name: "x" } }),
+  tc("can't create a loan with another email", "DENY", STRANGER, "create", "/loans/L9", { data: { ownerUid: uidOf(STRANGER), ownerEmail: FRIEND, name: "x" } }),
+  tc("can't create a loan with extra fields", "DENY", STRANGER, "create", "/loans/L9", { data: { ownerUid: uidOf(STRANGER), ownerEmail: STRANGER, name: "x", members: [] } }),
+  tc("signed-out can't create a loan", "DENY", null, "create", "/loans/L9", { data: { ownerUid: "x", ownerEmail: "x" } }),
+  tc("owner renames loan", "ALLOW", OWNER, "update", "/loans/L1", { data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "New" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Old" } }),
+  tc("owner can't hand loan to someone else", "DENY", OWNER, "update", "/loans/L1", { data: { ownerUid: uidOf(FRIEND), ownerEmail: OWNER }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("admin bumps updatedAt", "ALLOW", ADMIN, "update", "/loans/L1", { status: "approved", role: "admin", data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home", updatedAt: "b" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home", updatedAt: "a" } }),
+  tc("admin can't rename loan", "DENY", ADMIN, "update", "/loans/L1", { status: "approved", role: "admin", data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "X" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" } }),
+  tc("viewer can't change loan head", "DENY", FRIEND, "update", "/loans/L1", { status: "approved", data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, updatedAt: "b" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, updatedAt: "a" } }),
+  tc("owner deletes loan head", "ALLOW", OWNER, "delete", "/loans/L1", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("admin can't delete loan head", "DENY", ADMIN, "delete", "/loans/L1", { status: "approved", role: "admin", existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("owner invites by email", "ALLOW", OWNER, "create", `access/${FRIEND}`, { data: { email: FRIEND, status: "approved", role: "viewer" } }),
+  tc("request can't self-approve on another loan", "DENY", STRANGER, "create", `/loans/L2/access/${STRANGER}`, { data: { email: STRANGER, name: "S", status: "approved", requestedAt: "x" } }),
+  // ---- inbox: "shared with me" pointers ----
+  tc("owner writes inbox pointer", "ALLOW", OWNER, "create", `/inbox/${FRIEND}/loans/L1`, { data: { name: "Home", ownerEmail: OWNER, role: "viewer", sharedAt: "x" } }),
+  tc("owner can't add odd fields to inbox", "DENY", OWNER, "create", `/inbox/${FRIEND}/loans/L1`, { data: { name: "Home", status: "approved" } }),
+  tc("other owner can't write L1 inbox pointer", "DENY", OWNER2, "create", `/inbox/${FRIEND}/loans/L1`, { data: { name: "Home" } }),
+  tc("stranger can't plant an inbox pointer", "DENY", STRANGER, "create", `/inbox/${FRIEND}/loans/L1`, { data: { name: "Home" } }),
+  tc("person reads own inbox", "ALLOW", FRIEND, "list", `/inbox/${FRIEND}/loans/x`),
+  tc("person can't read someone else's inbox", "DENY", STRANGER, "list", `/inbox/${FRIEND}/loans/x`),
+  tc("person removes a pointer from own inbox", "ALLOW", FRIEND, "delete", `/inbox/${FRIEND}/loans/L1`, { existing: { name: "Home" } }),
+  // ---- users/<uid> ----
+  tc("user writes own profile", "ALLOW", FRIEND, "update", `/users/${uidOf(FRIEND)}`, { data: { lastLoanId: "L1" }, existing: {} }),
+  tc("user writes own bank profile", "ALLOW", FRIEND, "create", `/users/${uidOf(FRIEND)}/bankProfiles/sbi`, { data: { date: 0 } }),
+  tc("user can't read another profile", "DENY", STRANGER, "get", `/users/${uidOf(FRIEND)}`),
+  tc("user can't write another bank profile", "DENY", STRANGER, "create", `/users/${uidOf(FRIEND)}/bankProfiles/sbi`, { data: { date: 0 } }),
 ];
 
 (async () => {

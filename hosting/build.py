@@ -19,8 +19,6 @@ CONFIG = {
     "storageBucket": "advantage-loan-tracker-hub.firebasestorage.app",
     "messagingSenderId": "625022243493",
     "appId": "1:625022243493:web:4a939bd67c70af64c6734c",
-    # The owner gets the full tracker; anyone else must request access (see firestore.rules).
-    "ownerEmail": "mayursavaliya150@gmail.com",
 }
 
 HEAD = f"""<!doctype html>

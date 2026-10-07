@@ -197,6 +197,21 @@ tr.bk-open td { background: var(--accent-soft); }
   .gate h1 { font-size: 30px; }
 }
 @media (prefers-reduced-motion: reduce) { .gate-bar::before { animation: none; left: 0; width: 100%; opacity: .5; } }
+/* "Your loans" screen: same card as sign-in; the right side lists the loans and holds the new-loan form. */
+.home-side { align-content: start; gap: 20px; }
+.home-h { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.home-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.home-list li > button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; text-align: left; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 14px; padding: 12px 14px; font: inherit; }
+.home-list li > button:hover, .home-list li > button:focus-visible { border-color: var(--accent); background: var(--accent-soft); }
+.home-list .hl-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.home-list .hl-sub { grid-column: 1; font-size: 13px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.home-list .hl-go { grid-row: 1 / span 2; grid-column: 2; color: var(--accent); font-weight: 600; font-size: 14px; }
+.home-empty { margin: 0; color: var(--muted); font-size: 14px; }
+.home-form { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+.home-form[hidden] { display: none; }
+.home-form .grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.home-err { margin: 0; color: var(--bad); font-size: 14px; }
 footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70ch; }
 .ms { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .ms li { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
@@ -228,7 +243,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
 <div class="wrap">
   <header class="top">
     <div>
-      <div class="label">Home Loan Advantage</div>
+      <div class="label" id="loan-label">Savings-linked home loan</div>
       <h1>Advantage Loan Tracker</h1>
     </div>
     <div class="top-meta">
@@ -243,6 +258,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
             <div class="small muted acct-email" id="acct-email"></div>
             <span class="chip" id="viewer-chip" hidden>View only</span>
           </div>
+          <button type="button" role="menuitem" id="myloans-btn" hidden>My loans</button>
           <button type="button" role="menuitem" id="install-btn" hidden>Install app</button>
           <button type="button" role="menuitem" id="signout">Sign out</button>
         </div>
@@ -687,22 +703,23 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           <path d="M15 21.5V36h18V21.5" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linejoin="round"/>
           <path d="M20.5 24.5h7M20.5 27.5h7M22 24.5c3.2 0 3.2 5 0 5h-1.5l5 4" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <div class="gate-eyebrow">Home Loan Advantage</div>
+        <div class="gate-eyebrow">Savings-linked home loans</div>
         <h1 id="gate-title">Sign in</h1>
         <p class="gate-lead" id="gate-lead">to continue to Advantage Loan Tracker</p>
       </div>
       <div class="gate-side">
         <div class="gate-body">
           <div class="gate-chip" id="gate-chip" hidden><span class="gate-avatar" id="gate-avatar"></span><span class="gate-email" id="gate-email"></span></div>
-          <p class="gate-msg" id="gate-msg">Use your Google account. If this is your first visit, you can ask the owner for access after signing in.</p>
+          <p class="gate-msg" id="gate-msg">Use your Google account to track your own loans, or to open a loan someone shared with you.</p>
           <div class="gate-note" id="gate-note" hidden><span id="gate-note-icon"></span><span id="gate-note-text"></span></div>
           <div class="gate-trust" id="gate-trust">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 9.5 4-1.2 7-5 7-9.5V6l-7-3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Only people the owner approves can see this tracker.</span>
+            <span>Each loan is private: only its owner and the people they approve can see it.</span>
           </div>
         </div>
         <div class="gate-actions">
           <button class="gate-btn text" type="button" id="gate-signout" hidden>Sign out</button>
+          <button class="gate-btn text" type="button" id="gate-home" hidden>My loans</button>
           <button class="gate-btn primary" type="button" id="gate-request" hidden>Request access</button>
           <button class="gate-btn primary" type="button" id="gate-switch" hidden>Use another account</button>
           <button class="gbtn" type="button" id="gate-signin"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Sign in with Google</span></button>
@@ -710,6 +727,57 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       </div>
     </section>
     <footer class="gate-foot">Advantage Loan Tracker</footer>
+  </div>
+</div>
+<div id="home" class="gate" hidden>
+  <div class="gate-wrap">
+    <section class="gate-card" aria-live="polite">
+      <div class="gate-brand">
+        <svg class="gate-mark" viewBox="0 0 48 48" aria-hidden="true">
+          <rect width="48" height="48" rx="14" fill="var(--accent-soft)"/>
+          <path d="M11 23.5 24 12l13 11.5" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15 21.5V36h18V21.5" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linejoin="round"/>
+          <path d="M20.5 24.5h7M20.5 27.5h7M22 24.5c3.2 0 3.2 5 0 5h-1.5l5 4" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="gate-eyebrow">Advantage Loan Tracker</div>
+        <h1>Your loans</h1>
+        <p class="gate-lead">Open a loan or add one. Each loan keeps its own data and its own list of people it is shared with.</p>
+        <div class="gate-chip" id="home-chip"><span class="gate-avatar" id="home-avatar"></span><span class="gate-email" id="home-email"></span></div>
+      </div>
+      <div class="gate-side home-side">
+        <div>
+          <h3 class="home-h">My loans</h3>
+          <ul class="home-list" id="home-mine"></ul>
+        </div>
+        <div id="home-shared-box" hidden>
+          <h3 class="home-h">Shared with me</h3>
+          <ul class="home-list" id="home-shared"></ul>
+        </div>
+        <form class="home-form" id="nl-form" hidden>
+          <h3 class="home-h" style="margin:0">New loan</h3>
+          <div class="grid">
+            <label class="field"><span>Name for this loan</span><input id="nl-name" type="text" maxlength="60" placeholder="e.g. Home loan" required></label>
+            <label class="field"><span>Bank</span><input id="nl-bank" type="text" maxlength="60" placeholder="e.g. SBI MaxGain" required></label>
+            <label class="field"><span>Loan sanctioned (₹)</span><input id="nl-principal" type="number" min="1" step="1" required></label>
+            <label class="field"><span>Interest rate (% p.a.)</span><input id="nl-rate" type="number" min="0" max="30" step="0.01" required></label>
+            <label class="field"><span>Tenure (months)</span><input id="nl-tenure" type="number" min="1" max="480" step="1" required></label>
+            <label class="field"><span>Disbursal date</span><input id="nl-start" type="date" required></label>
+            <label class="field"><span>First EMI date</span><input id="nl-first" type="date" required></label>
+          </div>
+          <p class="small muted" style="margin:0">For a loan linked to a savings or current account (overdraft-style), where interest is charged on the outstanding amount minus the account balance. Everything can be changed later in Loan settings.</p>
+          <p class="home-err" id="nl-err" hidden></p>
+          <div class="gate-actions">
+            <button class="gate-btn text" type="button" id="nl-cancel">Cancel</button>
+            <button class="gate-btn primary" type="submit" id="nl-save">Create loan</button>
+          </div>
+        </form>
+        <div class="gate-actions" id="home-actions">
+          <button class="gate-btn text" type="button" id="home-signout">Sign out</button>
+          <button class="gate-btn primary" type="button" id="home-add">Add a loan</button>
+        </div>
+      </div>
+    </section>
+    <footer class="gate-foot">Figures are estimates; your bank's statement is the final word. Not financial advice.</footer>
   </div>
 </div>
 
@@ -753,11 +821,18 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   }
 
   // ---------- state ----------
-  // What is used when the database has no loan settings (and what a restore fills gaps with): this loan's own terms, so a
-  // missing settings document never shows placeholder dates. The salary plan is deliberately NOT here: this file is public.
-  const DEFAULTS = { principal: 4000000, rate: 7.30, tenure: 288, emi: null, startDate: "2026-09-21", firstEmiDate: "2026-10-10", creditAmount: 0, creditDay: 1, expense: 0, expenseMode: "spread", cardDay: 8, stepUp: 0, configured: true };
+  // What is used when a loan has no settings yet (and what a restore fills gaps with). These are placeholders, not anyone's
+  // loan: every loan gets its real terms from the new-loan form, and configured: false makes the page say so if they are missing.
+  const DEFAULTS = (() => {
+    const d = new Date(), y = d.getFullYear(), m = d.getMonth();
+    const ymd = (yy, mm, dd) => { const t = new Date(Date.UTC(yy, mm, dd)); return t.toISOString().slice(0, 10); };
+    return { principal: 3000000, rate: 8.50, tenure: 240, emi: null, startDate: ymd(y, m, 1), firstEmiDate: ymd(y, m + 1, 5),
+      creditAmount: 0, creditDay: 1, expense: 0, expenseMode: "spread", cardDay: 8, stepUp: 0, configured: false };
+  })();
   const state = { settings: Object.assign({}, DEFAULTS), balances: [], rates: [], prepay: [], statements: [], txns: [], disb: [], loantx: [], access: [], lock: null, loaded: false };
   let db = null, dbFailed = false, readOnly = false;
+  // Hosted page: the open loan. All of its data lives under loans/<LOAN_ID>/ (BASE); db, serverDoc and restCall add BASE.
+  let LOAN_ID = "", BASE = "";
   // First answers from the server for the settings documents. They keep the placeholder defaults from being saved over real
   // data and drive the banner. healSettings then compares them with the server itself (serverChecked / serverOverride).
   let settingsLoaded = false, settingsMissing = false, salaryLoaded = false, salaryMissing = false, mirrorLoaded = false, healTried = false, healSalary = false;
@@ -1105,7 +1180,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   async function serverDoc(path) {
     const u = firebase.auth().currentUser;
     if (!u) throw new Error("not signed in");
-    const r = await fetch("https://firestore.googleapis.com/v1/projects/" + window.FIREBASE_CONFIG.projectId + "/databases/(default)/documents/" + path,
+    const r = await fetch("https://firestore.googleapis.com/v1/projects/" + window.FIREBASE_CONFIG.projectId + "/databases/(default)/documents/" + BASE + path,
       { headers: { Authorization: "Bearer " + await u.getIdToken() }, cache: "no-store" });
     if (r.status === 404) return null;
     if (!r.ok) throw new Error("HTTP " + r.status);
@@ -1420,6 +1495,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           if (fullSettings) db.collection("private").doc("settingsMirror").set(Object.assign({}, fullSettings, { savedAt: new Date().toISOString() })).catch(() => {});
           if (serverOverride && col === "loan" && id === "settings") { loanDoc = data; mergeSettings(); }
           if (serverOverride && col === "private" && id === "salary") { salaryDoc = data; mergeSettings(); }
+          touchLoan();
           return true;
         }
         catch (e) {
@@ -1437,8 +1513,15 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     schedule(); return true;
   }
   async function remove(col, id) {
-    if (db) { try { await db.collection(col).doc(id).delete(); return true; } catch (e) { handleErr(e); return false; } }
+    if (db) { try { await db.collection(col).doc(id).delete(); touchLoan(); return true; } catch (e) { handleErr(e); return false; } }
     state[col] = state[col].filter(x => x.id !== id); schedule(); return true;
+  }
+  // Marks the loan as changed (loans/<id>.updatedAt), at most once a minute; the nightly backup only visits changed loans.
+  let touchedAt = 0;
+  function touchLoan() {
+    if (!LOAN_ID || readOnly || !window.firebase || Date.now() - touchedAt < 60000) return;
+    touchedAt = Date.now();
+    firebase.firestore().doc("loans/" + LOAN_ID).update({ updatedAt: new Date().toISOString() }).catch(() => {});
   }
   function handleErr(e) {
     const code = e && e.code;
@@ -2549,7 +2632,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   }
   function istNow(now) { const t = new Date(now.getTime() + 330 * 60000).toISOString(); return { day: t.slice(0, 10), time: t.slice(11, 19).replace(/:/g, "") }; }
   async function restCall(method, path, body) {
-    const r = await fetch(restBase() + "/" + path, { method, cache: "no-store",
+    const r = await fetch(restBase() + "/" + BASE + path, { method, cache: "no-store",
       headers: { Authorization: "Bearer " + await firebase.auth().currentUser.getIdToken(), "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
     if (r.status === 404 && method === "GET") return null;
     if (!r.ok) throw new Error(method + " " + path + " -> " + r.status);
@@ -2849,7 +2932,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     } catch (err) { toast("Couldn't update. Check your connection and try again."); }
   });
   $("share-copy").addEventListener("click", () => {
-    const link = location.origin + "/";
+    const link = location.origin + "/?loan=" + encodeURIComponent(LOAN_ID);
     navigator.clipboard.writeText(link).then(() => toast("Link copied: " + link)).catch(() => toast(link));
   });
   $("banners").addEventListener("click", (e) => {
@@ -2962,8 +3045,8 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     // The hosted page starts with body.fb-wait (tracker hidden) until sign-in is confirmed.
     const GATE = {
       loading: { title: "One moment", lead: "Checking your sign-in", msg: "Looking up your account and your access to this tracker." },
-      signin: { title: "Sign in", lead: "to continue to Advantage Loan Tracker", msg: "Use your Google account. If this is your first visit, you can ask the owner for access after signing in." },
-      request: { title: "Ask for access", lead: "This tracker is private", msg: "This account doesn't have access yet. Send a request and the owner will approve it from their tracker." },
+      signin: { title: "Sign in", lead: "to continue to Advantage Loan Tracker", msg: "Use your Google account to track your own loans, or to open a loan someone shared with you." },
+      request: { title: "Ask for access", lead: "This loan is private", msg: "This account doesn't have access to this loan yet. Send a request and the owner will approve it from their tracker." },
       pending: { title: "Request sent", lead: "Waiting for the owner", note: "Your request is with the owner. This page opens by itself as soon as it is approved, so you can leave it open." },
       denied: { title: "No access", lead: "The owner declined this request", note: "You can't see this tracker with this account. Sign in with a different Google account, or ask the owner directly." }
     };
@@ -2992,6 +3075,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       $("gate-request").hidden = mode !== "request";
       $("gate-switch").hidden = mode !== "denied";
       $("gate-signout").hidden = mode === "signin" || mode === "loading";
+      $("gate-home").hidden = !(mode === "request" || mode === "pending" || mode === "denied");
     };
     gate("loading");
     $("gate-signin").addEventListener("click", () => {
@@ -3001,25 +3085,100 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         else $("gate-msg").textContent = "Sign-in didn't finish. Try again.";
       });
     });
-    const signOut = () => auth.signOut().then(() => location.reload());
+    const signOut = () => auth.signOut().then(() => { location.href = "/"; });
     $("gate-signout").addEventListener("click", signOut);
     $("gate-switch").addEventListener("click", signOut); // signs out; the page then offers "Sign in with Google" again
     $("signout").addEventListener("click", signOut);
-    auth.onAuthStateChanged((user) => {
-      if (!user) { gate("signin"); return; }
-      setAccount(user);
-      const fs = firebase.firestore();
-      if (user.email === FB.ownerEmail) {
-        gate("loading");
+    $("home-signout").addEventListener("click", signOut);
+    // "My loans" (account menu, and the no-access screens) goes back to the list of loans.
+    const goHome = () => { location.href = "/?home"; };
+    $("myloans-btn").addEventListener("click", goHome);
+    $("gate-home").addEventListener("click", goHome);
+
+    // ---------- "Your loans": the user's own loans and the ones shared with them ----------
+    const fsdb = () => firebase.firestore();
+    const userDoc = (user) => fsdb().doc("users/" + user.uid);
+    const rememberLoan = (user, id) => userDoc(user).set({ lastLoanId: id, email: user.email, seenAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+    async function myLoans(user) {
+      const qs = await fsdb().collection("loans").where("ownerUid", "==", user.uid).get();
+      return qs.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => (a.createdAt || "") < (b.createdAt || "") ? -1 : 1);
+    }
+    async function sharedLoans(user) {
+      const qs = await fsdb().collection("inbox/" + user.email + "/loans").get();
+      return qs.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => (a.name || "") < (b.name || "") ? -1 : 1);
+    }
+    const loanItem = (l, sub) => "<li><button type='button' data-open='" + esc(l.id) + "'><span class='hl-name'>" + esc(l.name || "Home loan") + "</span>" +
+      "<span class='hl-sub'>" + esc(sub) + "</span><span class='hl-go'>Open</span></button></li>";
+    async function showHome(user) {
+      gate(null); document.body.classList.add("fb-wait");
+      $("home").hidden = false;
+      $("home-email").textContent = user.email || "";
+      $("home-avatar").textContent = (user.email || "?").charAt(0).toUpperCase();
+      $("home-mine").innerHTML = "<li class='home-empty'>Loading…</li>";
+      let mine = [], shared = [];
+      try { [mine, shared] = await Promise.all([myLoans(user), sharedLoans(user).catch(() => [])]); }
+      catch (e) { $("home-mine").innerHTML = "<li class='home-empty'>Couldn't load your loans. Check your connection and reload the page.</li>"; return; }
+      $("home-mine").innerHTML = mine.length ? mine.map(l => loanItem(l, l.bank || "")).join("")
+        : "<li class='home-empty'>No loans yet. Add your first loan to start tracking it.</li>";
+      $("home-shared-box").hidden = !shared.length;
+      $("home-shared").innerHTML = shared.map(l => loanItem(l, (l.bank ? l.bank + " · " : "") + "from " + (l.ownerName || l.ownerEmail || "the owner") + (l.role === "admin" ? " · admin" : " · view only"))).join("");
+      if (!mine.length && !shared.length) openForm(true);
+    }
+    $("home").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-open]"); if (!b) return;
+      location.href = "/?loan=" + encodeURIComponent(b.dataset.open);
+    });
+    function openForm(on) {
+      $("nl-form").hidden = !on; $("home-actions").hidden = on;
+      $("nl-err").hidden = true;
+      if (on) $("nl-name").focus();
+    }
+    $("home-add").addEventListener("click", () => openForm(true));
+    $("nl-cancel").addEventListener("click", () => openForm(false));
+    $("nl-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const user = auth.currentUser; if (!user) return;
+      const err = (t) => { $("nl-err").textContent = t; $("nl-err").hidden = false; };
+      const start = $("nl-start").value, first = $("nl-first").value;
+      if (!start || !first || toDay(first) <= toDay(start)) { err("The first EMI date must be after the disbursal date."); return; }
+      const now = new Date().toISOString();
+      const id = fsdb().collection("loans").doc().id;
+      $("nl-save").disabled = true;
+      try {
+        // The loan head first: the rules check ownership on it before the settings can be written.
+        await fsdb().doc("loans/" + id).set({ ownerUid: user.uid, ownerEmail: user.email, name: $("nl-name").value.trim(), bank: $("nl-bank").value.trim(), createdAt: now, updatedAt: now });
+        await fsdb().doc("loans/" + id + "/loan/settings").set({
+          principal: Math.round(parseFloat($("nl-principal").value)), rate: parseFloat($("nl-rate").value), tenure: parseInt($("nl-tenure").value, 10),
+          emi: null, startDate: start, firstEmiDate: first, configured: true
+        });
+        await rememberLoan(user, id);
+        location.href = "/?loan=" + encodeURIComponent(id);
+      } catch (ex) { $("nl-save").disabled = false; err("Couldn't create the loan. Check your connection and try again."); }
+    });
+
+    // ---------- open one loan: owner, admin, viewer, or the request flow ----------
+    async function openLoan(user, id) {
+      const fs = fsdb();
+      LOAN_ID = id; BASE = "loans/" + id + "/";
+      const scoped = { collection: (c) => fs.collection(BASE + c), doc: (p) => fs.doc(BASE + p) };
+      $("myloans-btn").hidden = false;
+      gate("loading");
+      let head = null;
+      // Readable only by the owner and approved people; anyone else gets "permission denied" and the request flow.
+      try { const s = await fs.doc("loans/" + id).get(); head = s.exists ? s.data() : null; } catch (e) { head = null; }
+      const showHead = (h) => { if (h) { $("loan-label").textContent = (h.bank ? h.bank + " · " : "") + (h.name || "Home loan"); document.title = (h.name || "Loan") + " · Advantage Loan Tracker"; } };
+      showHead(head);
+      if (head && head.ownerUid === user.uid) {
         onFirstData = () => gate(null);
         $("share-panel").hidden = false;
         ownerName = user.displayName || "";
-        fs.collection("access").onSnapshot((qs) => { state.access = qs.docs.map(d => Object.assign({ id: d.id }, d.data())); schedule(); }, () => {});
-        attach(fs, true);
+        rememberLoan(user, id);
+        scoped.collection("access").onSnapshot((qs) => { state.access = qs.docs.map(d => Object.assign({ id: d.id }, d.data())); schedule(); }, () => {});
+        attach(scoped, true);
         return;
       }
-      // Someone else: request flow; the tracker opens read-only once approved.
-      const ref = fs.collection("access").doc(user.email);
+      // Someone else: request flow; the loan opens once the owner approves (or straight away when they were invited).
+      const ref = scoped.doc("access/" + user.email);
       let approved = false, approvedRole = null;
       $("gate-request").onclick = () => {
         $("gate-request").disabled = true;
@@ -3033,6 +3192,8 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         if (st === "approved") {
           if (approved) { if (role !== approvedRole) location.reload(); return; } // made admin / admin removed while the page is open
           approved = true; approvedRole = role;
+          rememberLoan(user, id);
+          if (!head) fs.doc("loans/" + id).get().then((s) => showHead(s.exists ? s.data() : null)).catch(() => {});
           if (role === "admin") {
             // Admin: edits everything and sees salary like the owner; backups and Sharing stay owner-only.
             document.body.classList.add("admin");
@@ -3040,7 +3201,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
             $("viewer-chip").hidden = false;
             gate("loading");
             onFirstData = () => gate(null);
-            attach(fs, false, true);
+            attach(scoped, false, true);
             return;
           }
           readOnly = true;
@@ -3050,12 +3211,29 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           if ($("tabs").querySelector('[data-tab="smart"][aria-selected="true"]')) showTab("overview");
           gate("loading");
           onFirstData = () => gate(null);
-          attach(fs, false, false);
+          attach(scoped, false, false);
         } else {
           if (approved) { location.reload(); return; } // access removed or declined while the page is open
           gate(st || "request", user.email);
         }
       }, () => gate("request", user.email));
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { gate("signin"); return; }
+      setAccount(user);
+      const q = new URLSearchParams(location.search);
+      const id = q.get("loan");
+      if (id) { openLoan(user, id); return; }
+      // No loan in the link: open the last one used, unless the person asked for the list.
+      if (!q.has("home")) {
+        try {
+          const u = await userDoc(user).get();
+          const last = u.exists ? u.data().lastLoanId : "";
+          if (last) { history.replaceState(null, "", "/?loan=" + encodeURIComponent(last) + location.hash); openLoan(user, last); return; }
+        } catch (e) {}
+      }
+      showHome(user);
     });
   } else {
     (async function () {
