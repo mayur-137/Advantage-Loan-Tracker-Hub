@@ -24,3 +24,4 @@ hosting/public/guide.html
 *.log
 .DS_Store
 Thumbs.db
+hosting/public/what-is.js
