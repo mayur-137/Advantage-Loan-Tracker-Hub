@@ -71,7 +71,9 @@ def header(active):
     links = "".join(f'<a href="{href}"' + (' aria-current="page"' if key == active else "") + f">{label}</a>" for key, href, label in NAV)
     return ('<header class="site-head"><div class="wrap">'
             f'<a class="brand" href="/"><img src="/icon-192.png" alt="" width="32" height="32"><span>{NAME}</span></a>'
-            f'<nav class="site-nav" aria-label="Main">{links}<a class="cta" href="/app">Open tracker</a></nav>'
+            # "What is it?" opens the explainer popup (what-is.js); without JS it is a plain link to the article.
+            f'<nav class="site-nav" aria-label="Main"><a href="/learn/how-savings-linked-home-loans-work" data-whatis>What is it?</a>{links}'
+            '<a class="cta" href="/app">Open tracker</a></nav>'
             '</div></header>')
 
 
@@ -132,6 +134,7 @@ def page_html(meta, body):
 <meta name="twitter:description" content="{esc(desc)}">
 <meta name="twitter:image" content="{SITE}/icon-512.png">
 <link rel="stylesheet" href="/site.css">
+<script src="/what-is.js" defer{' data-auto' if meta.get('whatis_auto') else ''}></script>
 <script type="application/ld+json">{json.dumps(ld if len(ld) > 1 else ld[0], ensure_ascii=False)}</script>
 {ads_head() if meta.get("ads", True) else ""}</head>
 <body>
@@ -173,10 +176,11 @@ def app_head(demo):
     ads = {"client": ADS["client"], "rail": ADS["rail"]}
     if demo:
         boot = (f"<script>window.SITE_ADS = {json.dumps(ads)};</script>\n"
-                '<script src="/demo-seed.js"></script>\n' + ads_head())
+                '<script src="/demo-seed.js"></script>\n<script src="/what-is.js" defer data-auto></script>\n' + ads_head())
     else:
         boot = (f"<script>window.FIREBASE_CONFIG = {json.dumps(CONFIG)}; window.SITE_ADS = {json.dumps(ads)};\n"
                 'if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));</script>\n'
+                '<script src="/what-is.js" defer></script>\n'
                 f'<script src="https://www.gstatic.com/firebasejs/{SDK}/firebase-app-compat.js"></script>\n'
                 f'<script src="https://www.gstatic.com/firebasejs/{SDK}/firebase-auth-compat.js"></script>\n'
                 f'<script src="https://www.gstatic.com/firebasejs/{SDK}/firebase-firestore-compat.js"></script>\n')
@@ -217,7 +221,7 @@ def main():
     app = SRC.read_text(encoding="utf-8")
     (PUB / "app.html").write_text(app_head(False) + app + "\n</body>\n</html>\n", encoding="utf-8")
     (PUB / "demo.html").write_text(app_head(True) + app + "\n</body>\n</html>\n", encoding="utf-8")
-    for name in ("manifest.json", "sw.js", "demo-seed.js"):
+    for name in ("manifest.json", "sw.js", "demo-seed.js", "what-is.js"):
         shutil.copyfile(HERE / name, PUB / name)
     pages = build_site()
     # Search engines: everything public, not the signed-in tracker.

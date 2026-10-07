@@ -292,6 +292,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           </div>
           <button type="button" role="menuitem" id="admin-btn" hidden>Admin dashboard</button>
           <button type="button" role="menuitem" id="myloans-btn" hidden>My loans</button>
+          <button type="button" role="menuitem" id="whatis-btn" data-whatis>What is an Advantage home loan?</button>
           <button type="button" role="menuitem" id="help-btn">Help &amp; guide</button>
           <button type="button" role="menuitem" id="install-btn" hidden>Install app</button>
           <button type="button" role="menuitem" id="delloan-btn" hidden>Delete this loan</button>
@@ -773,6 +774,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         <div class="gate-eyebrow">Savings-linked home loans</div>
         <h1 id="gate-title">Sign in</h1>
         <p class="gate-lead" id="gate-lead">to continue to Advantage Loan Tracker</p>
+        <p class="small" style="margin:0"><a href="/learn/how-savings-linked-home-loans-work" data-whatis>What is an Advantage home loan?</a></p>
       </div>
       <div class="gate-side">
         <div class="gate-body">
@@ -845,6 +847,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         <div class="gate-eyebrow">Advantage Loan Tracker</div>
         <h1>Your loans</h1>
         <p class="gate-lead">Open a loan or add one. Each loan keeps its own data and its own list of people it is shared with.</p>
+        <p class="small" style="margin:0"><a href="/learn/how-savings-linked-home-loans-work" data-whatis>What is an Advantage home loan?</a></p>
         <p class="small muted" style="margin:0;max-width:40ch">Only you, the people you approve, and the app's administrator (read-only, for support) can see your loans. <a href="/privacy">Privacy</a></p>
         <div class="gate-chip" id="home-chip"><span class="gate-avatar" id="home-avatar"></span><span class="gate-email" id="home-email"></span></div>
       </div>
@@ -1132,7 +1135,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       ? "The loan settings are missing from the database, so the dates shown are placeholders. Open <b>Loan settings</b>, enter your disbursal date and first EMI date and save."
       : "Loan dates are placeholders. Open <b>Loan settings</b> and enter your disbursal date and first EMI date so the past months line up with your account.");
     if (dbFailed) bn.push("Saving is not available in this view, so changes last only until you close the page.");
-    if (demoMode) bn.push("<b>Demo with sample data:</b> look around and try anything; nothing is saved. <a href=\"/app\">Sign in with Google</a> to track your own loan.");
+    if (demoMode) bn.push("<b>Demo with sample data:</b> look around and try anything; nothing is saved. <a href=\"/app\">Sign in with Google</a> to track your own loan. New to this? <a href=\"/learn/how-savings-linked-home-loans-work\" data-whatis>What is an Advantage home loan?</a>");
     if (superOwner) bn.push("<b>Admin view, read-only:</b> " + esc(superOwner) + "'s loan. Nothing can be changed from here.");
     else if (readOnly) bn.push("You can view this tracker but not change it.");
     if (!navigator.onLine) bn.push("You're offline. This is the last saved data; changes you make will save when you're back online.");
@@ -2814,6 +2817,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   document.addEventListener("click", (e) => { if (!$("acct-menu").hidden && !e.target.closest("#acct")) acctMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("acct-menu").hidden) { acctMenu(false); $("acct-btn").focus(); } });
   $("install-btn").addEventListener("click", () => acctMenu(false));
+  $("whatis-btn").addEventListener("click", () => acctMenu(false));
 
   // ---------- install as an app ----------
   let installPrompt = null;

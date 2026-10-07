@@ -1,4 +1,4 @@
-<!--page {"title": "Advantage Loan Tracker: free tracker for savings-linked home loans (MaxGain, Home Loan Advantage, Money Saver)", "og_title": "Advantage Loan Tracker: see what your savings save on your home loan", "description": "Free tracker for home loans linked to a savings account. See today's interest, how much your savings balance saves, your EMI split and payoff date, and check your bank's figures. Works with statements from any bank.", "path": "/", "nav": "home", "card": false, "narrow": false, "priority": "1.0", "jsonld": [{"@context": "https://schema.org", "@type": "WebApplication", "name": "Advantage Loan Tracker", "url": "https://advantage-loan-tracker-hub.web.app/", "applicationCategory": "FinanceApplication", "operatingSystem": "Any (web browser)", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"}, "description": "Tracker for savings-linked (overdraft) home loans: daily interest, savings offset, EMI split, payoff date, bank match and tax."}, {"@context": "https://schema.org", "@type": "WebSite", "name": "Advantage Loan Tracker", "url": "https://advantage-loan-tracker-hub.web.app/"}]}-->
+<!--page {"title": "Advantage Loan Tracker: free tracker for savings-linked home loans (MaxGain, Home Loan Advantage, Money Saver)", "og_title": "Advantage Loan Tracker: see what your savings save on your home loan", "description": "Free tracker for home loans linked to a savings account. See today's interest, how much your savings balance saves, your EMI split and payoff date, and check your bank's figures. Works with statements from any bank.", "path": "/", "nav": "home", "card": false, "whatis_auto": true, "narrow": false, "priority": "1.0", "jsonld": [{"@context": "https://schema.org", "@type": "WebApplication", "name": "Advantage Loan Tracker", "url": "https://advantage-loan-tracker-hub.web.app/", "applicationCategory": "FinanceApplication", "operatingSystem": "Any (web browser)", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"}, "description": "Tracker for savings-linked (overdraft) home loans: daily interest, savings offset, EMI split, payoff date, bank match and tax."}, {"@context": "https://schema.org", "@type": "WebSite", "name": "Advantage Loan Tracker", "url": "https://advantage-loan-tracker-hub.web.app/"}]}-->
 <script>
   // Links shared before the tracker moved to /app (/?loan=..., /?home, /?admin) still open the tracker.
   if (/[?&](loan|home|admin)\b/.test(location.search)) location.replace("/app" + location.search + location.hash);
@@ -13,7 +13,8 @@
     <a class="btn ghost" href="/demo">Try the demo (no sign-in)</a>
     <a class="btn ghost" href="/calculator">Quick calculator</a>
   </div>
-  <p class="small muted">Free. No bank login, ever. Your loan stays private to you and the people you choose.</p>
+  <p class="small muted">Free. No bank login, ever. Your loan stays private to you and the people you choose.
+    New to this? <a href="/learn/how-savings-linked-home-loans-work" data-whatis>What is an Advantage home loan?</a></p>
 </section>
 
 <div class="grid">
