@@ -10,13 +10,14 @@ const OWNER2 = "owner2@example.com"; // owns loan L2
 const FRIEND = "friend@example.com";
 const STRANGER = "stranger@example.com";
 const ADMIN = "admin@example.com";
+const SUPER = "mayursavaliya150@gmail.com"; // the app's administrator (read-only everywhere)
 const D = "/databases/(default)/documents";
 const L = "loans/L1";
 const uidOf = (email) => "u-" + email;
 const full = (path) => path.startsWith("/") ? `${D}${path}` : `${D}/${L}/${path}`;
 
 // authAge = seconds since the Google sign-in (auth_time); default is "just signed in".
-const user = (email, authAge = 0) => ({ uid: uidOf(email), token: { email, email_verified: true, auth_time: Math.floor(Date.now() / 1000) - authAge } });
+const user = (email, authAge = 0, verified = true) => ({ uid: uidOf(email), token: { email, email_verified: verified, auth_time: Math.floor(Date.now() / 1000) - authAge } });
 const getMock = (path, data) => ({ function: "get", args: [{ exactValue: full(path) }], result: data === null ? { undefined: {} } : { value: { data } } });
 const existsMock = (path, yes) => ({ function: "exists", args: [{ exactValue: full(path) }], result: { value: yes } });
 // The loans: L1 is OWNER's, L2 is OWNER2's.
@@ -33,7 +34,7 @@ const tc = (name, expectation, who, method, path, opts = {}) => ({
   name,
   tc: {
     expectation,
-    request: Object.assign({ auth: who ? user(who, opts.authAge || 0) : null, path: full(path), method, time: new Date().toISOString() }, opts.data ? { resource: { data: opts.data } } : {}),
+    request: Object.assign({ auth: who ? user(who, opts.authAge || 0, !opts.unverified) : null, path: full(path), method, time: new Date().toISOString() }, opts.data ? { resource: { data: opts.data } } : {}),
     resource: opts.existing ? { data: opts.existing } : undefined,
     functionMocks: loanMocks(opts.l1)
       .concat(who ? accessMocks(who, opts.status === undefined ? null : opts.status, opts.role) : [])
@@ -234,6 +235,39 @@ const cases = [
   tc("deleting: admin still can't delete backups", "DENY", ADMIN, "delete", "backups/2026-10-07", { status: "approved", role: "admin", l1: { deleting: "t" }, existing: { hash: "h1" } }),
   tc("deleting: other owner can't delete L1 data", "DENY", OWNER2, "delete", "loan/settings", { l1: { deleting: "t" }, existing: { principal: 1 } }),
   tc("not deleting: owner still can't delete a backup", "DENY", OWNER, "delete", "backups/2026-10", { existing: { month: "2026-10" } }),
+  // ---- the app's administrator (SUPER): reads every loan and user, writes nothing of anyone else's ----
+  tc("super reads another user's loan head", "ALLOW", SUPER, "get", "/loans/L1", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("super lists all loans", "ALLOW", SUPER, "list", "/loans/x", { existing: { ownerUid: uidOf(OWNER2), ownerEmail: OWNER2 } }),
+  tc("super reads loan settings", "ALLOW", SUPER, "get", "loan/settings"),
+  tc("super reads salary", "ALLOW", SUPER, "get", "private/salary"),
+  tc("super reads salary password hash", "ALLOW", SUPER, "get", "private/lock"),
+  tc("super reads tax", "ALLOW", SUPER, "get", "private/tax"),
+  tc("super lists balances", "ALLOW", SUPER, "list", "balances/x"),
+  tc("super reads access list", "ALLOW", SUPER, "get", `access/${FRIEND}`),
+  tc("super reads a backup", "ALLOW", SUPER, "get", "backups/2026-10"),
+  tc("super reads a backup part", "ALLOW", SUPER, "get", "backups/2026-10/parts/private"),
+  tc("super reads backupsMeta", "ALLOW", SUPER, "get", "backupsMeta/dedupe"),
+  tc("super reads L2 salary", "ALLOW", SUPER, "get", "/loans/L2/private/salary"),
+  tc("super lists users", "ALLOW", SUPER, "list", "/users/x"),
+  tc("super reads a user", "ALLOW", SUPER, "get", `/users/${uidOf(OWNER)}`),
+  tc("super can't write a balance", "DENY", SUPER, "update", "balances/2026-10-05", { data: { amount: 1 }, existing: { amount: 0 } }),
+  tc("super can't create data", "DENY", SUPER, "create", "disb/2027-01-01_1", { data: { amount: 1 } }),
+  tc("super can't write salary", "DENY", SUPER, "update", "private/salary", { data: { creditAmount: 1 }, existing: { creditAmount: 0 } }),
+  tc("super can't write salary password", "DENY", SUPER, "update", "private/lock", { data: { hash: "z" }, existing: { hash: "y" } }),
+  tc("super can't delete data", "DENY", SUPER, "delete", "balances/2026-10-05", { existing: { amount: 0 } }),
+  tc("super can't change loan head", "DENY", SUPER, "update", "/loans/L1", { data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "X" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" } }),
+  tc("super can't take over a loan", "DENY", SUPER, "update", "/loans/L1", { data: { ownerUid: uidOf(SUPER), ownerEmail: OWNER }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("super can't delete a loan", "DENY", SUPER, "delete", "/loans/L1", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("super can't approve access", "DENY", SUPER, "update", `access/${FRIEND}`, { data: { status: "approved" }, existing: { status: "pending" } }),
+  tc("super can't give itself access", "DENY", SUPER, "create", `access/${SUPER}`, { data: { email: SUPER, status: "approved", role: "admin" } }),
+  tc("super can't create a backup", "DENY", SUPER, "create", "backups/2026-11", { data: { month: "2026-11" } }),
+  tc("super can't write backupsMeta", "DENY", SUPER, "update", "backupsMeta/dedupe", { data: { oldId: "a" }, existing: { oldId: "c" } }),
+  tc("super can't write another user's profile", "DENY", SUPER, "update", `/users/${uidOf(OWNER)}`, { data: { lastLoanId: "x" }, existing: {} }),
+  tc("super can't write an inbox pointer", "DENY", SUPER, "create", `/inbox/${FRIEND}/loans/L1`, { data: { name: "Home" } }),
+  tc("normal user can't list all loans", "DENY", STRANGER, "list", "/loans/x", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
+  tc("normal user can't list users", "DENY", STRANGER, "list", "/users/x"),
+  tc("look-alike email isn't super", "DENY", "mayursavaliya150@gmail.co", "get", "private/salary"),
+  tc("super with an unverified email gets nothing", "DENY", SUPER, "get", "private/salary", { unverified: true }),
 ];
 
 (async () => {

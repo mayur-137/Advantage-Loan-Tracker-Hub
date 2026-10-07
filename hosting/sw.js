@@ -18,8 +18,8 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   if (req.mode === "navigate" && url.origin === location.origin) {
     e.respondWith(fetch(req).then((res) => {
-      const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put("/", copy));
+      // Only the app page is kept for offline use (not other pages such as /privacy.html).
+      if (url.pathname === "/" && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put("/", copy)); }
       return res;
     }).catch(() => caches.match("/")));
     return;

@@ -212,6 +212,20 @@ tr.bk-open td { background: var(--accent-soft); }
 .home-form[hidden] { display: none; }
 .home-form .grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .home-err { margin: 0; color: var(--bad); font-size: 14px; }
+/* Admin view of someone else's loan: everything shows, nothing can be entered, saved, uploaded or deleted. */
+body.superview .panel:has(#quick-form, #up-form, #bal-form, #bulk-text, #lk-set-form),
+body.superview #del-panel, body.superview #cb-now, body.superview label:has(#bk-file), body.superview #share-copy,
+body.superview #share-body button, body.superview #sm-eye, body.superview #lk-form,
+body.superview .wrap form button[type="submit"], body.superview form.edit-only { display: none !important; }
+/* Admin dashboard */
+.adm-card { background: var(--surface); border-radius: 28px; padding: 32px; display: grid; gap: 18px; min-width: 0; }
+.adm-head { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: start; }
+.adm-head h1 { margin: 6px 0 4px; }
+.adm-tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+#adm-q { width: 100%; }
+#admin td.l, #admin th.l { text-align: left; white-space: normal; }
+#admin tr.adm-user td { border-top: 2px solid var(--line); }
+@media (max-width: 760px) { .adm-card { padding: 22px 16px; border-radius: 22px; } }
 footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70ch; }
 .ms { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .ms li { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
@@ -258,6 +272,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
             <div class="small muted acct-email" id="acct-email"></div>
             <span class="chip" id="viewer-chip" hidden>View only</span>
           </div>
+          <button type="button" role="menuitem" id="admin-btn" hidden>Admin dashboard</button>
           <button type="button" role="menuitem" id="myloans-btn" hidden>My loans</button>
           <button type="button" role="menuitem" id="install-btn" hidden>Install app</button>
           <button type="button" role="menuitem" id="delloan-btn" hidden>Delete this loan</button>
@@ -725,7 +740,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           <div class="gate-note" id="gate-note" hidden><span id="gate-note-icon"></span><span id="gate-note-text"></span></div>
           <div class="gate-trust" id="gate-trust">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 9.5 4-1.2 7-5 7-9.5V6l-7-3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Each loan is private: only its owner and the people they approve can see it.</span>
+            <span>Each loan is private: only its owner, the people they approve, and the app's administrator (read-only, for support) can see it. <a href="/privacy.html">Privacy</a></span>
           </div>
         </div>
         <div class="gate-actions">
@@ -753,6 +768,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         <div class="gate-eyebrow">Advantage Loan Tracker</div>
         <h1>Your loans</h1>
         <p class="gate-lead">Open a loan or add one. Each loan keeps its own data and its own list of people it is shared with.</p>
+        <p class="small muted" style="margin:0;max-width:40ch">Only you, the people you approve, and the app's administrator (read-only, for support) can see your loans. <a href="/privacy.html">Privacy</a></p>
         <div class="gate-chip" id="home-chip"><span class="gate-avatar" id="home-avatar"></span><span class="gate-email" id="home-email"></span></div>
       </div>
       <div class="gate-side home-side">
@@ -788,7 +804,27 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         </div>
       </div>
     </section>
-    <footer class="gate-foot">Figures are estimates; your bank's statement is the final word. Not financial advice.</footer>
+    <footer class="gate-foot">Figures are estimates; your bank's statement is the final word. Not financial advice. <a href="/privacy.html">Privacy</a></footer>
+  </div>
+</div>
+<div id="admin" class="gate" hidden>
+  <div class="gate-wrap" style="max-width:1200px">
+    <section class="adm-card" aria-live="polite">
+      <div class="adm-head">
+        <div>
+          <div class="gate-eyebrow">Advantage Loan Tracker Hub</div>
+          <h1>Admin dashboard</h1>
+          <p class="gate-lead" style="max-width:60ch">Every user and every loan. Opening a loan shows the whole app as its owner sees it, read-only: nothing can be changed from here.</p>
+        </div>
+        <div class="gate-actions">
+          <button class="gate-btn text" type="button" id="adm-home">My loans</button>
+          <button class="gate-btn text" type="button" id="adm-signout">Sign out</button>
+        </div>
+      </div>
+      <div class="adm-tiles" id="adm-tiles"></div>
+      <input id="adm-q" type="search" placeholder="Search by email, bank or loan name" aria-label="Search">
+      <div class="tablebox"><table><thead><tr><th class="l">User</th><th class="l">Loan</th><th class="l">Bank</th><th>Sanctioned</th><th>Rate</th><th>Created</th><th>Updated</th><th></th></tr></thead><tbody id="adm-body"></tbody></table></div>
+    </section>
   </div>
 </div>
 
@@ -844,6 +880,8 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   let db = null, dbFailed = false, readOnly = false;
   // Hosted page: the open loan. All of its data lives under loans/<LOAN_ID>/ (BASE); db, serverDoc and restCall add BASE.
   let LOAN_ID = "", BASE = "";
+  // The app's administrator looking at someone else's loan (read-only, salary shown): that loan's owner email.
+  let superOwner = "";
   // First answers from the server for the settings documents. They keep the placeholder defaults from being saved over real
   // data and drive the banner. healSettings then compares them with the server itself (serverChecked / serverOverride).
   let settingsLoaded = false, settingsMissing = false, salaryLoaded = false, salaryMissing = false, mirrorLoaded = false, healTried = false, healSalary = false;
@@ -1016,10 +1054,11 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       ? "The loan settings are missing from the database, so the dates shown are placeholders. Open <b>Loan settings</b>, enter your disbursal date and first EMI date and save."
       : "Loan dates are placeholders. Open <b>Loan settings</b> and enter your disbursal date and first EMI date so the past months line up with your account.");
     if (dbFailed) bn.push("Saving is not available in this view, so changes last only until you close the page.");
-    if (readOnly) bn.push("You can view this tracker but not change it.");
+    if (superOwner) bn.push("<b>Admin view, read-only:</b> " + esc(superOwner) + "'s loan. Nothing can be changed from here.");
+    else if (readOnly) bn.push("You can view this tracker but not change it.");
     if (!navigator.onLine) bn.push("You're offline. This is the last saved data; changes you make will save when you're back online.");
     const pend = state.access.filter(a => a.status === "pending").length;
-    if (pend) bn.push("<b>" + pend + (pend === 1 ? " person has" : " people have") + "</b> asked to see your tracker. <a href=\"#settings\" data-goto=\"settings\">Review in Loan settings</a>");
+    if (pend && !superOwner) bn.push("<b>" + pend + (pend === 1 ? " person has" : " people have") + "</b> asked to see your tracker. <a href=\"#settings\" data-goto=\"settings\">Review in Loan settings</a>");
     $("banners").innerHTML = bn.map(t => '<div class="banner">' + t + "</div>").join("");
 
     // overview
@@ -1146,7 +1185,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   function lockUntil() { try { return +sessionStorage.getItem(LOCK_KEY) || 0; } catch (e) { return 0; } }
   function setLockUntil(t) { try { if (t) sessionStorage.setItem(LOCK_KEY, String(t)); else sessionStorage.removeItem(LOCK_KEY); } catch (e) {} }
   function syncSalary() {
-    const want = !lockLoaded ? false : lockOn() ? lockUntil() > Date.now() : false;
+    const want = superOwner ? true : !lockLoaded ? false : lockOn() ? lockUntil() > Date.now() : false;
     if (want !== showSalary) { showSalary = want; if (!want) setLockUntil(0); schedule(); }
   }
   const b64 = (buf) => btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(buf))));
@@ -3150,6 +3189,65 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     const goHome = () => { location.href = "/?home"; };
     $("myloans-btn").addEventListener("click", goHome);
     $("gate-home").addEventListener("click", goHome);
+    $("adm-home").addEventListener("click", goHome);
+    $("adm-signout").addEventListener("click", signOut);
+    // The app's administrator (FIREBASE_CONFIG.superAdmin). The page only shows him the dashboard; the rules are what allow the reads.
+    const isSuper = (user) => !!(user && FB.superAdmin && user.email === FB.superAdmin && user.emailVerified);
+    $("admin-btn").addEventListener("click", () => { location.href = "/?admin"; });
+
+    // ---------- admin dashboard (/?admin): every user and loan ----------
+    let admRows = [];
+    const admDay = (s) => s ? fmtDay(toDay(String(s).slice(0, 10))) : "–";
+    async function showAdmin(user) {
+      gate(null); document.body.classList.add("fb-wait");
+      $("admin").hidden = false;
+      $("adm-body").innerHTML = "<tr><td colspan='8' class='empty'>Loading…</td></tr>";
+      const fs = fsdb();
+      let loans, users;
+      try {
+        const [lq, uq] = await Promise.all([fs.collection("loans").get(), fs.collection("users").get()]);
+        loans = lq.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+        users = uq.docs.map((d) => Object.assign({ uid: d.id }, d.data()));
+      } catch (e) { $("adm-body").innerHTML = "<tr><td colspan='8' class='empty'>Couldn't load. Check your connection and reload the page.</td></tr>"; return; }
+      const sets = await Promise.all(loans.map((l) => fs.doc("loans/" + l.id + "/loan/settings").get().then((s) => s.exists ? s.data() : {}).catch(() => ({}))));
+      loans.forEach((l, i) => { l.s = sets[i]; });
+      // One entry per person: everyone who has signed in (users/<uid>), plus loan owners without a users document.
+      const people = new Map();
+      users.forEach((u) => { const e = u.email || u.uid; people.set(e, { email: e, seenAt: u.seenAt || "", loans: [] }); });
+      loans.forEach((l) => { const e = l.ownerEmail || "?"; if (!people.has(e)) people.set(e, { email: e, seenAt: "", loans: [] }); people.get(e).loans.push(l); });
+      admRows = Array.from(people.values()).sort((a, b) => (b.seenAt || "") < (a.seenAt || "") ? -1 : 1);
+      admRows.forEach((p) => p.loans.sort((a, b) => (a.createdAt || "") < (b.createdAt || "") ? -1 : 1));
+      const week = Date.now() - 7 * 86400000;
+      const tile = (label, v) => "<div class='tile'><div class='label'>" + esc(label) + "</div><div class='big'>" + esc(v) + "</div></div>";
+      $("adm-tiles").innerHTML = tile("Users", String(admRows.length)) + tile("Loans", String(loans.length)) +
+        tile("Total sanctioned", lakh(loans.reduce((t, l) => t + (+l.s.principal || 0), 0))) +
+        tile("Loans changed in 7 days", String(loans.filter((l) => l.updatedAt && Date.parse(l.updatedAt) > week).length));
+      renderAdmin();
+    }
+    function renderAdmin() {
+      const q = $("adm-q").value.trim().toLowerCase();
+      const hit = (p, l) => !q || p.email.toLowerCase().includes(q) || (l && ((l.name || "") + " " + (l.bank || "")).toLowerCase().includes(q));
+      const rows = [];
+      admRows.forEach((p) => {
+        const ls = p.loans.filter((l) => hit(p, l));
+        if (!ls.length && !(hit(p, null) && !p.loans.length)) return;
+        const who = "<td class='l' rowspan='" + Math.max(1, ls.length) + "'><b>" + esc(p.email) + "</b><br><span class='small muted'>Last seen " + esc(admDay(p.seenAt)) + " · " + p.loans.length + (p.loans.length === 1 ? " loan" : " loans") + "</span></td>";
+        if (!ls.length) { rows.push("<tr class='adm-user'>" + who + "<td class='l muted' colspan='7'>No loans yet</td></tr>"); return; }
+        ls.forEach((l, i) => {
+          rows.push("<tr" + (i ? "" : " class='adm-user'") + ">" + (i ? "" : who) +
+            "<td class='l'>" + esc(l.name || "Home loan") + (l.deleting ? " <span class='chip bad'>deleting</span>" : "") + "</td><td class='l'>" + esc(l.bank || "") + "</td>" +
+            "<td>" + (l.s.principal ? lakh(+l.s.principal) : "–") + "</td><td>" + (l.s.rate != null ? (+l.s.rate).toFixed(2) + "%" : "–") + "</td>" +
+            "<td>" + esc(admDay(l.createdAt)) + "</td><td>" + esc(admDay(l.updatedAt)) + "</td>" +
+            "<td><button class='link' type='button' style='color:var(--accent)' data-adm-open='" + esc(l.id) + "'>Open</button></td></tr>");
+        });
+      });
+      $("adm-body").innerHTML = rows.length ? rows.join("") : "<tr><td colspan='8' class='empty'>Nothing matches.</td></tr>";
+    }
+    $("adm-q").addEventListener("input", renderAdmin);
+    $("adm-body").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-adm-open]"); if (!b) return;
+      location.href = "/?loan=" + encodeURIComponent(b.dataset.admOpen);
+    });
 
     // ---------- "Your loans": the user's own loans and the ones shared with them ----------
     const fsdb = () => firebase.firestore();
@@ -3245,6 +3343,23 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         attach(scoped, true);
         return;
       }
+      if (head && isSuper(user)) {
+        // The app's administrator on someone else's loan: the whole app as the owner sees it (salary, Smart payoff, Tax,
+        // Spending, backups, sharing list), read-only. The database rules allow him reads only; the page writes nothing.
+        superOwner = head.ownerEmail || "another user";
+        readOnly = true;
+        document.body.classList.add("superview");
+        $("viewer-chip").textContent = "Admin view (read-only)";
+        $("viewer-chip").hidden = false;
+        document.querySelectorAll(".wrap form input, .wrap form select, .wrap form textarea").forEach((i) => { i.disabled = true; });
+        $("share-panel").hidden = false;
+        scoped.collection("access").onSnapshot((qs) => { state.access = qs.docs.map(d => Object.assign({ id: d.id }, d.data())); schedule(); }, () => {});
+        onFirstData = () => gate(null);
+        syncSalary();
+        attach(scoped, false, true);
+        listCloudBackups().catch(() => {});
+        return;
+      }
       // Someone else: request flow; the loan opens once the owner approves (or straight away when they were invited).
       const ref = scoped.doc("access/" + user.email);
       let approved = false, approvedRole = null;
@@ -3290,7 +3405,11 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     auth.onAuthStateChanged(async (user) => {
       if (!user) { gate("signin"); return; }
       setAccount(user);
+      // Last seen (and the email, so the admin dashboard can list people who have no loan yet).
+      userDoc(user).set({ email: user.email, seenAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+      if (isSuper(user)) $("admin-btn").hidden = false;
       const q = new URLSearchParams(location.search);
+      if (q.has("admin") && isSuper(user)) { showAdmin(user); return; }
       const id = q.get("loan");
       if (id) { openLoan(user, id); return; }
       // No loan in the link: open the last one used, unless the person asked for the list.

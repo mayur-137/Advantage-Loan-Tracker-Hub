@@ -3,7 +3,8 @@ rules_version = '2';
 // Advantage Loan Tracker Hub: many users, many loans. Everything a tracker keeps lives under loans/<loanId>.
 // Each loan has its own owner (loans/<id>.ownerUid) and its own sharing list (loans/<id>/access/<email>):
 // approved people can view it; ones the owner made an admin can also change it. Nobody can see a loan
-// they are not the owner of or approved for.
+// they are not the owner of or approved for, except the app's administrator (isSuper), who can read
+// every loan for support and change none (users are told so on the sign-in screen and in privacy.html).
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -13,6 +14,10 @@ service cloud.firestore {
     function loanPath(id) { return /databases/$(database)/documents/loans/$(id); }
     function accessPath(id) { return /databases/$(database)/documents/loans/$(id)/access/$(me()); }
 
+    // The app's administrator: read-only access to every loan and user (never any write through this).
+    function isSuper() {
+      return signedIn() && me() == "mayursavaliya150@gmail.com";
+    }
     function isOwner(id) {
       return signedIn() && exists(loanPath(id)) && get(loanPath(id)).data.ownerUid == request.auth.uid;
     }
@@ -47,8 +52,10 @@ service cloud.firestore {
 
     // ---- the loan itself: who owns it, its name and bank ----
     match /loans/{id} {
-      // Readable by the owner (also as a query: where ownerUid == my uid) and by approved people.
-      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || isViewer(id));
+      // Readable by the owner and by approved people. Listing: your own loans (where ownerUid == my uid); the
+      // administrator lists them all. (A query can't use the per-loan access check, so list has its own rule.)
+      allow get: if signedIn() && (isSuper() || resource.data.ownerUid == request.auth.uid || isViewer(id));
+      allow list: if signedIn() && (isSuper() || resource.data.ownerUid == request.auth.uid);
       // Anyone signed in can start a loan of their own.
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
@@ -72,7 +79,7 @@ service cloud.firestore {
       // private/*, but never touch backups or the access list, and cannot change the salary password
       // (private/lock, a salted hash): only the owner writes that, and only right after a fresh Google sign-in.
       match /{col}/{doc} {
-        allow read: if isOwner(id)
+        allow read: if isOwner(id) || isSuper()
           || (isAdmin(id) && !(col in ["backups", "access", "backupsMeta"]))
           || (isViewer(id) && col in ["loan", "balances", "rates", "prepay", "statements", "txns", "disb", "loantx"]);
         allow create, update: if !(col in ["backups", "access", "backupsMeta"])
@@ -89,7 +96,7 @@ service cloud.firestore {
       // Sharing list. Anyone signed in can ask for themselves (pending only) and see their own entry.
       // Only the owner invites, approves, declines, removes, or makes someone an admin.
       match /access/{email} {
-        allow read: if isOwner(id) || (signedIn() && me() == email);
+        allow read: if isOwner(id) || isSuper() || (signedIn() && me() == email);
         allow create: if isOwner(id) || (signedIn()
           && me() == email
           && request.resource.data.email == email
@@ -99,15 +106,18 @@ service cloud.firestore {
       }
 
       match /backups/{b} {
-        allow read, create: if isOwner(id);
+        allow read: if isOwner(id) || isSuper();
+        allow create: if isOwner(id);
         allow delete: if isOwner(id) && (deleting(id) || dedupeOf(id, b));
       }
       match /backups/{b}/parts/{part} {
-        allow read, create: if isOwner(id);
+        allow read: if isOwner(id) || isSuper();
+        allow create: if isOwner(id);
         allow delete: if isOwner(id) && (deleting(id) || dedupeOf(id, b));
       }
       match /backupsMeta/{doc} {
-        allow read, write: if isOwner(id);
+        allow read: if isOwner(id) || isSuper();
+        allow write: if isOwner(id);
       }
     }
 
@@ -121,7 +131,8 @@ service cloud.firestore {
 
     // ---- per-user settings (last opened loan, saved statement layouts) ----
     match /users/{uid} {
-      allow read, write: if signedIn() && request.auth.uid == uid;
+      allow read: if (signedIn() && request.auth.uid == uid) || isSuper();
+      allow write: if signedIn() && request.auth.uid == uid;
       match /{sub}/{doc} {
         allow read, write: if signedIn() && request.auth.uid == uid;
       }
