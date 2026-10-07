@@ -1,0 +1,17 @@
+# Personal documents and data: bank statements, sanction letter, exported backups. Never commit.
+*.pdf
+*.xls
+*.xlsx
+*.csv
+hosting/migrate-backup.json
+*backup*.json
+
+# Tooling and build output
+hosting/node_modules/
+hosting/.firebase/
+hosting/public/index.html
+hosting/public/manifest.json
+hosting/public/sw.js
+*.log
+.DS_Store
+Thumbs.db

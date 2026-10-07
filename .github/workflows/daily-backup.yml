@@ -1,0 +1,34 @@
+# Daily backup of the loan tracker database, in GitHub's cloud (no PC needed).
+# Runs hosting/backup.js every day at 23:30 IST, and on demand from the Actions tab ("Run workflow").
+# Needs the repository secret FIREBASE_SA_KEY: the JSON key of a Google Cloud service account with the
+# "Cloud Datastore User" role in project advantage-loan-tracker. The log shows only counts and a short hash.
+name: Daily backup
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 18:00 UTC = 23:30 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      # Only the one library backup.js needs (not the whole hosting toolchain).
+      - name: Install google-auth-library
+        run: npm install --prefix "$RUNNER_TEMP/bk" --no-audit --no-fund google-auth-library@^9
+      - name: Back up
+        working-directory: hosting
+        env:
+          FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SA_KEY }}
+          NODE_PATH: ${{ runner.temp }}/bk/node_modules
+        run: |
+          if [ -z "$FIREBASE_SA_KEY" ]; then echo "Secret FIREBASE_SA_KEY is not set"; exit 1; fi
+          node backup.js

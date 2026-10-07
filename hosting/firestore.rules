@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function isOwner() {
+      return signedIn() && request.auth.token.email == "mayursavaliya150@gmail.com";
+    }
+    // Someone the owner approved in the Sharing panel (access/<their email>.status == "approved").
+    function isViewer() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/access/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/access/$(request.auth.token.email)).data.status == "approved";
+    }
+
+    // The owner signed in with Google within the last 5 minutes (auth_time is when the Google sign-in happened,
+    // refreshed by "sign in again"). Changing the salary password needs this, so an already-open session on a
+    // shared or borrowed device cannot reset it without the owner's Google password.
+    function freshLogin() {
+      return request.auth.token.auth_time > (request.time.toMillis() / 1000) - 300;
+    }
+
+    // An approved person the owner made an admin (access/<their email>.role == "admin"). Only the owner can
+    // set or clear role (access updates are owner-only; a request can't carry a role).
+    function isAdmin() {
+      return isViewer()
+        && get(/databases/$(database)/documents/access/$(request.auth.token.email)).data.get("role", "") == "admin";
+    }
+
+    // Tracker data. Approved viewers can read the shared collections only; salary (private/*),
+    // backups and the access list are never readable by them. The owner and admins write; admins also read
+    // private/*, but never touch backups or the access list, and cannot change the salary password
+    // (private/lock, a salted hash): only the owner writes that, and only right after a fresh Google sign-in.
+    match /{col}/{doc} {
+      allow read: if isOwner()
+        || (isAdmin() && !(col in ["backups", "access", "backupsMeta"]))
+        || (isViewer() && col in ["loan", "balances", "rates", "prepay", "statements", "txns", "disb", "loantx"]);
+      allow create, update: if !(col in ["backups", "access", "backupsMeta"])
+        && ((isOwner() && (!(col == "private" && doc == "lock") || freshLogin()))
+            || (isAdmin() && !(col == "private" && doc == "lock")));
+      // The settings documents can be changed but never deleted from the app (a lost copy is put back at the owner's login).
+      allow delete: if !(col in ["backups", "access", "backupsMeta"])
+        && !(col == "loan" && doc == "settings")
+        && !(col == "private" && (doc == "salary" || doc == "settingsMirror"))
+        && ((isOwner() && (!(col == "private" && doc == "lock") || freshLogin()))
+            || (isAdmin() && !(col == "private" && doc == "lock")));
+    }
+
+    // Access requests: anyone signed in can ask for themselves (pending only) and see their own request.
+    // Only the owner approves, declines, removes, or makes someone an admin.
+    match /access/{email} {
+      allow read: if isOwner() || (signedIn() && request.auth.token.email == email);
+      allow create: if isOwner() || (signedIn()
+        && request.auth.token.email == email
+        && request.resource.data.email == email
+        && request.resource.data.status == "pending"
+        && request.resource.data.keys().hasOnly(["email", "name", "status", "requestedAt"]));
+      allow update, delete: if isOwner();
+    }
+
+    // Backups can be read and created by the owner and are never changed. One can be deleted only when it is an exact copy
+    // (same hash) of the newer backup named in backupsMeta/dedupe; its parts go first, so its head is still there to check.
+    function dedupeOf(id) {
+      let m = get(/databases/$(database)/documents/backupsMeta/dedupe).data;
+      let mine = get(/databases/$(database)/documents/backups/$(id)).data.get("hash", "");
+      return m.oldId == id && m.newId != id && mine != ""
+        && get(/databases/$(database)/documents/backups/$(m.newId)).data.get("hash", "") == mine;
+    }
+    match /backups/{id} {
+      allow read, create: if isOwner();
+      allow delete: if isOwner() && dedupeOf(id);
+    }
+    match /backups/{id}/parts/{part} {
+      allow read, create: if isOwner();
+      allow delete: if isOwner() && dedupeOf(id);
+    }
+    match /backupsMeta/{doc} {
+      allow read, write: if isOwner();
+    }
+  }
+}
