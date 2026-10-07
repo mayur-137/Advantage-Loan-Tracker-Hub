@@ -13,6 +13,8 @@ hosting/public/index.html
 hosting/public/manifest.json
 hosting/public/sw.js
 hosting/public/privacy.html
+hosting/public/terms.html
+hosting/public/guide.html
 *.log
 .DS_Store
 Thumbs.db

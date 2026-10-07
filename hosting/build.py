@@ -48,7 +48,7 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 OUT.parent.mkdir(parents=True, exist_ok=True)
 # App files for the installable version (icons come from make-icons.js).
 import shutil
-for name in ("manifest.json", "sw.js", "privacy.html"):
+for name in ("manifest.json", "sw.js", "privacy.html", "terms.html", "guide.html"):
     shutil.copyfile(HERE / name, OUT.parent / name)
 OUT.write_text(HEAD + SRC.read_text(encoding="utf-8") + "\n</body>\n</html>\n", encoding="utf-8")
 print("wrote", OUT)
