@@ -635,6 +635,16 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       <p class="small muted" style="margin:0">Send the link to someone. They sign in with Google and ask for access. Once you approve, they can see this tracker but can't change anything, and they never see your salary. <b>Make admin</b> lets a person change everything and see your salary too (not backups or this Sharing list); remove admin to take it back. Remove someone to cut their access straight away.</p>
       <div class="tablebox"><table><thead><tr><th>Person</th><th>Status</th><th>Asked on</th><th></th></tr></thead><tbody id="share-body"></tbody></table></div>
     </div>
+    <div class="panel edit-only owner-only" id="del-panel" hidden>
+      <div class="panel-head"><h2>Delete this loan</h2></div>
+      <p class="small muted" style="margin:0">Deletes this loan and <b>everything in it</b> for good: loan settings, salary plan, balances, statements, rates, extra payments, tax and spending settings, the salary password, <b>all backups</b> and the sharing list. People it is shared with lose access straight away. This can't be undone. Download a backup file first if you may want the data later.</p>
+      <div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end">
+        <button class="btn ghost" type="button" id="del-backup">Download backup file</button>
+        <label class="field" style="flex:1;min-width:200px"><span>Type the loan's name to confirm: <b id="del-name"></b></span><input id="del-confirm" type="text" autocomplete="off"></label>
+        <button class="btn" type="button" id="del-go" style="background:var(--bad);border-color:var(--bad);color:#fff" disabled>Delete loan</button>
+      </div>
+      <p class="small" id="del-msg" style="margin:0"></p>
+    </div>
     <div class="panel">
       <h2>Loan details</h2>
       <form id="set-form" class="stack" style="gap:12px">
@@ -1218,9 +1228,9 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   }
   let smDraft = null, smTouched = false;
 
-  // Saved numbers once a salary has been saved; until then the figures Mayur gave (₹65,000 on the 7th, ₹10,000 expenses).
+  // Saved numbers once a salary has been saved; until then nothing (each person enters their own salary and expenses).
   function draftFromSettings(s) {
-    if (!+s.creditAmount) return { creditAmount: 65000, creditDay: 7, expense: 10000, expenseMode: "card", cardDay: 8, stepUp: 0 };
+    if (!+s.creditAmount) return { creditAmount: 0, creditDay: 1, expense: 0, expenseMode: "spread", cardDay: 8, stepUp: 0 };
     const f = flowOf(s);
     return { creditAmount: f.credit, creditDay: f.creditDay, expense: f.expense, expenseMode: f.expenseMode, cardDay: f.cardDay, stepUp: f.stepUp };
   }
@@ -2935,6 +2945,45 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     const link = location.origin + "/?loan=" + encodeURIComponent(LOAN_ID);
     navigator.clipboard.writeText(link).then(() => toast("Link copied: " + link)).catch(() => toast(link));
   });
+  // ---------- delete this loan (owner) ----------
+  // Marks the loan as being deleted (needs a fresh Google sign-in; the rules then let the owner delete everything under it),
+  // removes it from the "Shared with me" list of everyone it was shared with, deletes the backups, the data and finally
+  // the loan itself. If the page is closed half way, opening the loan again finishes the job.
+  let loanHead = null;
+  $("del-confirm").addEventListener("input", () => {
+    $("del-go").disabled = !loanHead || $("del-confirm").value.trim() !== (loanHead.name || "").trim();
+  });
+  $("del-backup").addEventListener("click", () => $("bk-download").click());
+  async function deleteLoan(resume) {
+    const fs = firebase.firestore(), base = "loans/" + LOAN_ID, msg = (t) => { $("del-msg").textContent = t; };
+    const user = firebase.auth().currentUser;
+    if (!resume) {
+      if (!(await ensureFreshLogin())) return false;
+      await fs.doc(base).update({ deleting: new Date().toISOString() });
+    }
+    const delAll = async (refs) => { for (let i = 0; i < refs.length; i += 20) await Promise.all(refs.slice(i, i + 20).map((r) => r.delete())); };
+    msg("Removing it from the people it was shared with…");
+    const access = await fs.collection(base + "/access").get();
+    await Promise.all(access.docs.map((d) => fs.doc("inbox/" + d.id + "/loans/" + LOAN_ID).delete().catch(() => {})));
+    msg("Deleting backups…");
+    const bks = await fs.collection(base + "/backups").get();
+    for (const b of bks.docs) { await delAll((await b.ref.collection("parts").get()).docs.map((d) => d.ref)); await b.ref.delete(); }
+    msg("Deleting the data…");
+    for (const c of COLS.concat(["private", "backupsMeta", "access", "loan"])) await delAll((await fs.collection(base + "/" + c).get()).docs.map((d) => d.ref));
+    await fs.doc(base).delete();
+    if (user) await fs.doc("users/" + user.uid).set({ lastLoanId: "" }, { merge: true }).catch(() => {});
+    return true;
+  }
+  $("del-go").addEventListener("click", async () => {
+    if (!loanHead || $("del-confirm").value.trim() !== (loanHead.name || "").trim()) return;
+    $("del-go").disabled = true;
+    try {
+      if (await deleteLoan(false)) { toast("Loan deleted."); location.href = "/?home"; }
+      else $("del-go").disabled = false;
+    } catch (e) {
+      $("del-msg").textContent = "The delete didn't finish. Check your connection and open this loan again to finish it.";
+    }
+  });
   $("banners").addEventListener("click", (e) => {
     const a = e.target.closest("[data-goto]"); if (!a) return;
     e.preventDefault(); showTab(a.dataset.goto); $("share-panel").scrollIntoView({ block: "start" });
@@ -3118,7 +3167,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       let mine = [], shared = [];
       try { [mine, shared] = await Promise.all([myLoans(user), sharedLoans(user).catch(() => [])]); }
       catch (e) { $("home-mine").innerHTML = "<li class='home-empty'>Couldn't load your loans. Check your connection and reload the page.</li>"; return; }
-      $("home-mine").innerHTML = mine.length ? mine.map(l => loanItem(l, l.bank || "")).join("")
+      $("home-mine").innerHTML = mine.length ? mine.map(l => loanItem(l, l.deleting ? "Delete didn't finish: open to finish it" : (l.bank || ""))).join("")
         : "<li class='home-empty'>No loans yet. Add your first loan to start tracking it.</li>";
       $("home-shared-box").hidden = !shared.length;
       $("home-shared").innerHTML = shared.map(l => loanItem(l, (l.bank ? l.bank + " · " : "") + "from " + (l.ownerName || l.ownerEmail || "the owner") + (l.role === "admin" ? " · admin" : " · view only"))).join("");
@@ -3169,6 +3218,17 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       const showHead = (h) => { if (h) { $("loan-label").textContent = (h.bank ? h.bank + " · " : "") + (h.name || "Home loan"); document.title = (h.name || "Loan") + " · Advantage Loan Tracker"; } };
       showHead(head);
       if (head && head.ownerUid === user.uid) {
+        loanHead = head;
+        if (head.deleting) {
+          // A delete was started and didn't finish: finish it, then go back to the list.
+          GATE.loading.msg = "Finishing deleting this loan.";
+          gate("loading");
+          try { await deleteLoan(true); location.href = "/?home"; }
+          catch (e) { GATE.loading.msg = "Couldn't finish deleting this loan. Check your connection and reload the page."; gate("loading"); }
+          return;
+        }
+        $("del-panel").hidden = false;
+        $("del-name").textContent = head.name || "";
         onFirstData = () => gate(null);
         $("share-panel").hidden = false;
         ownerName = user.displayName || "";

@@ -20,8 +20,8 @@ const user = (email, authAge = 0) => ({ uid: uidOf(email), token: { email, email
 const getMock = (path, data) => ({ function: "get", args: [{ exactValue: full(path) }], result: data === null ? { undefined: {} } : { value: { data } } });
 const existsMock = (path, yes) => ({ function: "exists", args: [{ exactValue: full(path) }], result: { value: yes } });
 // The loans: L1 is OWNER's, L2 is OWNER2's.
-const loanMocks = () => [
-  existsMock("/loans/L1", true), getMock("/loans/L1", { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" }),
+const loanMocks = (extra) => [
+  existsMock("/loans/L1", true), getMock("/loans/L1", Object.assign({ ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" }, extra || {})),
   existsMock("/loans/L2", true), getMock("/loans/L2", { ownerUid: uidOf(OWNER2), ownerEmail: OWNER2, name: "Flat" }),
 ];
 // Pretend loans/<loan>/access/<email> exists with this status (or doesn't exist when status is null).
@@ -35,7 +35,7 @@ const tc = (name, expectation, who, method, path, opts = {}) => ({
     expectation,
     request: Object.assign({ auth: who ? user(who, opts.authAge || 0) : null, path: full(path), method, time: new Date().toISOString() }, opts.data ? { resource: { data: opts.data } } : {}),
     resource: opts.existing ? { data: opts.existing } : undefined,
-    functionMocks: loanMocks()
+    functionMocks: loanMocks(opts.l1)
       .concat(who ? accessMocks(who, opts.status === undefined ? null : opts.status, opts.role) : [])
       .concat(who ? accessMocks(who, opts.status2 === undefined ? null : opts.status2, opts.role2, "L2") : [])
       .concat(opts.mocks || []),
@@ -218,6 +218,22 @@ const cases = [
   tc("user writes own bank profile", "ALLOW", FRIEND, "create", `/users/${uidOf(FRIEND)}/bankProfiles/sbi`, { data: { date: 0 } }),
   tc("user can't read another profile", "DENY", STRANGER, "get", `/users/${uidOf(FRIEND)}`),
   tc("user can't write another bank profile", "DENY", STRANGER, "create", `/users/${uidOf(FRIEND)}/bankProfiles/sbi`, { data: { date: 0 } }),
+  // ---- deleting a loan: start it (fresh sign-in), then everything under it can go ----
+  tc("owner starts deleting (fresh login)", "ALLOW", OWNER, "update", "/loans/L1", { data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home", deleting: "t" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" } }),
+  tc("owner (stale login) can't start deleting", "DENY", OWNER, "update", "/loans/L1", { authAge: 3600, data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home", deleting: "t" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" } }),
+  tc("admin can't start deleting", "DENY", ADMIN, "update", "/loans/L1", { status: "approved", role: "admin", data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home", deleting: "t" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" } }),
+  tc("delete can't be called off", "DENY", OWNER, "update", "/loans/L1", { data: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home" }, existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER, name: "Home", deleting: "t" } }),
+  tc("new loan can't start as deleting", "DENY", STRANGER, "create", "/loans/L9", { data: { ownerUid: uidOf(STRANGER), ownerEmail: STRANGER, name: "x", deleting: "t" } }),
+  tc("deleting: owner deletes loan settings", "ALLOW", OWNER, "delete", "loan/settings", { l1: { deleting: "t" }, existing: { principal: 1 } }),
+  tc("deleting: owner deletes salary", "ALLOW", OWNER, "delete", "private/salary", { l1: { deleting: "t" }, existing: { creditAmount: 1 } }),
+  tc("deleting: owner (stale login) deletes salary password", "ALLOW", OWNER, "delete", "private/lock", { authAge: 3600, l1: { deleting: "t" }, existing: { hash: "y" } }),
+  tc("deleting: owner deletes a backup", "ALLOW", OWNER, "delete", "backups/2026-10-07", { l1: { deleting: "t" }, existing: { hash: "h1" } }),
+  tc("deleting: owner deletes a backup part", "ALLOW", OWNER, "delete", "backups/2026-10-07/parts/settings", { l1: { deleting: "t" }, existing: { settings: {} } }),
+  tc("deleting: owner deletes backupsMeta", "ALLOW", OWNER, "delete", "backupsMeta/dedupe", { l1: { deleting: "t" }, existing: { oldId: "a" } }),
+  tc("deleting: admin still can't delete settings", "DENY", ADMIN, "delete", "loan/settings", { status: "approved", role: "admin", l1: { deleting: "t" }, existing: { principal: 1 } }),
+  tc("deleting: admin still can't delete backups", "DENY", ADMIN, "delete", "backups/2026-10-07", { status: "approved", role: "admin", l1: { deleting: "t" }, existing: { hash: "h1" } }),
+  tc("deleting: other owner can't delete L1 data", "DENY", OWNER2, "delete", "loan/settings", { l1: { deleting: "t" }, existing: { principal: 1 } }),
+  tc("not deleting: owner still can't delete a backup", "DENY", OWNER, "delete", "backups/2026-10", { existing: { month: "2026-10" } }),
 ];
 
 (async () => {

@@ -29,7 +29,12 @@ service cloud.firestore {
       return request.auth.token.auth_time > (request.time.toMillis() / 1000) - 300;
     }
     function loanKeysOk() {
-      return request.resource.data.keys().hasOnly(["ownerUid", "ownerEmail", "name", "bank", "createdAt", "updatedAt"]);
+      return request.resource.data.keys().hasOnly(["ownerUid", "ownerEmail", "name", "bank", "createdAt", "updatedAt", "deleting"]);
+    }
+    // The owner has started deleting the loan (loans/<id>.deleting set, which needs a fresh Google sign-in). From then on
+    // the owner may delete everything under it, settings and backups included, and finally the loan itself.
+    function deleting(id) {
+      return get(loanPath(id)).data.get("deleting", "") != "";
     }
     // Backups: one can be deleted only when it is an exact copy (same hash) of the newer backup named in
     // loans/<id>/backupsMeta/dedupe; its parts go first, so its head is still there to check.
@@ -48,12 +53,16 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerEmail == me()
-        && loanKeysOk();
-      // The owner renames it; admins only bump updatedAt. Ownership never moves.
+        && loanKeysOk()
+        && !("deleting" in request.resource.data);
+      // The owner renames it; admins only bump updatedAt. Ownership never moves. Starting a delete (deleting set) needs a
+      // fresh Google sign-in and can't be undone; a new loan can't be created already marked for deletion.
       allow update: if signedIn()
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.ownerEmail == resource.data.ownerEmail
         && loanKeysOk()
+        && (resource.data.get("deleting", "") == "" || request.resource.data.get("deleting", "") != "")
+        && (request.resource.data.get("deleting", "") == "" || resource.data.get("deleting", "") != "" || freshLogin())
         && (resource.data.ownerUid == request.auth.uid
             || (isAdmin(id) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["updatedAt"])));
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
@@ -69,8 +78,8 @@ service cloud.firestore {
         allow create, update: if !(col in ["backups", "access", "backupsMeta"])
           && ((isOwner(id) && (!(col == "private" && doc == "lock") || freshLogin()))
               || (isAdmin(id) && !(col == "private" && doc == "lock")));
-        // The settings documents can be changed but never deleted from the app.
-        allow delete: if !(col in ["backups", "access", "backupsMeta"])
+        // The settings documents can be changed but never deleted from the app, except while the owner deletes the whole loan.
+        allow delete: if (isOwner(id) && deleting(id)) || !(col in ["backups", "access", "backupsMeta"])
           && !(col == "loan" && doc == "settings")
           && !(col == "private" && (doc == "salary" || doc == "settingsMirror"))
           && ((isOwner(id) && (!(col == "private" && doc == "lock") || freshLogin()))
@@ -91,11 +100,11 @@ service cloud.firestore {
 
       match /backups/{b} {
         allow read, create: if isOwner(id);
-        allow delete: if isOwner(id) && dedupeOf(id, b);
+        allow delete: if isOwner(id) && (deleting(id) || dedupeOf(id, b));
       }
       match /backups/{b}/parts/{part} {
         allow read, create: if isOwner(id);
-        allow delete: if isOwner(id) && dedupeOf(id, b);
+        allow delete: if isOwner(id) && (deleting(id) || dedupeOf(id, b));
       }
       match /backupsMeta/{doc} {
         allow read, write: if isOwner(id);
