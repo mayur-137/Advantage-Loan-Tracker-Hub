@@ -1,0 +1,75 @@
+<!--page {"title": "Advantage Loan Tracker: free tracker for savings-linked home loans (MaxGain, Home Loan Advantage, Money Saver)", "og_title": "Advantage Loan Tracker: see what your savings save on your home loan", "description": "Free tracker for home loans linked to a savings account. See today's interest, how much your savings balance saves, your EMI split and payoff date, and check your bank's figures. Works with statements from any bank.", "path": "/", "nav": "home", "card": false, "narrow": false, "priority": "1.0", "jsonld": [{"@context": "https://schema.org", "@type": "WebApplication", "name": "Advantage Loan Tracker", "url": "https://advantage-loan-tracker-hub.web.app/", "applicationCategory": "FinanceApplication", "operatingSystem": "Any (web browser)", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"}, "description": "Tracker for savings-linked (overdraft) home loans: daily interest, savings offset, EMI split, payoff date, bank match and tax."}, {"@context": "https://schema.org", "@type": "WebSite", "name": "Advantage Loan Tracker", "url": "https://advantage-loan-tracker-hub.web.app/"}]}-->
+<script>
+  // Links shared before the tracker moved to /app (/?loan=..., /?home, /?admin) still open the tracker.
+  if (/[?&](loan|home|admin)\b/.test(location.search)) location.replace("/app" + location.search + location.hash);
+</script>
+<section class="hero">
+  <h1>See what your savings really save on your home loan</h1>
+  <p class="lead">A free tracker for home loans linked to a savings account, the kind sold as <b>MaxGain</b>, <b>Home Loan Advantage</b> or
+    <b>Money Saver</b>. Every rupee in the linked account cuts your interest, every day. This shows you exactly how much,
+    and when your loan will be closed.</p>
+  <div class="actions">
+    <a class="btn primary" href="/app">Start free with Google</a>
+    <a class="btn ghost" href="/demo">Try the demo (no sign-in)</a>
+    <a class="btn ghost" href="/calculator">Quick calculator</a>
+  </div>
+  <p class="small muted">Free. No bank login, ever. Your loan stays private to you and the people you choose.</p>
+</section>
+
+<div class="grid">
+  <div class="tile"><div class="stat">₹640 / day</div><p>Interest on ₹32 lakh at 7.30% with nothing in savings.</p></div>
+  <div class="tile"><div class="stat">₹540 / day</div><p>The same loan with ₹5 lakh kept in the linked account: ₹100 less every single day.</p></div>
+  <div class="tile"><div class="stat">₹36,500 / yr</div><p>Saved by that ₹5 lakh in a year, and you can still withdraw it any time.</p></div>
+</div>
+
+{{AD}}
+
+<h2>What it tells you</h2>
+<div class="grid">
+  <div class="tile"><h3>Today's interest</h3><p>Interest building up today, the amount it is charged on, and the next EMI split into interest and principal.</p></div>
+  <div class="tile"><h3>What your savings save</h3><p>Interest saved so far and over the loan, day by day, from your real savings balance.</p></div>
+  <div class="tile"><h3>Your payoff date</h3><p>When the loan closes, and how a bigger balance, a prepayment or a rate change moves it.</p></div>
+  <div class="tile"><h3>Bank match</h3><p>Checks the EMI that left your savings reached the loan, and the interest and outstanding agree to the rupee.</p></div>
+  <div class="tile"><h3>Smart payoff</h3><p>Salary, expenses and card-bill timing turned into a payoff plan, and the monthly amount for a debt-free goal.</p></div>
+  <div class="tile"><h3>Tax</h3><p>Sec 24(b) interest and Sec 80C principal by financial year, old vs new regime.</p></div>
+</div>
+
+<h2>Who it is for</h2>
+<p>Anyone with a <b>home loan linked to a savings or current account</b> (an overdraft-style loan), from any bank, where interest is
+  charged only on the outstanding loan minus the balance in that account. It works for an ordinary home loan too: just leave
+  the savings balance at zero. <a href="/learn/how-savings-linked-home-loans-work">How these loans work</a></p>
+
+<h2>Start in four steps</h2>
+<ol class="steps">
+  <li><b>Sign in with Google</b>: no new password to remember.</li>
+  <li><b>Add your loan</b> from your sanction letter: amount, rate, tenure, disbursal and first EMI date.</li>
+  <li><b>Upload your statements</b> (PDF, Excel or CSV from your bank's website or app) or type the balance.</li>
+  <li><b>Check Bank match</b> after each EMI. Share the loan with family as a Viewer or Editor if you like.</li>
+</ol>
+<div class="actions"><a class="btn primary" href="/app">Start free</a><a class="btn ghost" href="/guide">Read the full guide</a></div>
+
+<h2>Learn</h2>
+<ul class="articles">
+  <li><a class="item" href="/learn/how-savings-linked-home-loans-work"><b>How savings-linked home loans work</b><span>The daily interest rule, with worked examples.</span></a></li>
+  <li><a class="item" href="/learn/prepay-or-keep-in-savings"><b>Prepay the loan or keep the money in savings?</b><span>Same saving, different flexibility: how to choose.</span></a></li>
+  <li><a class="item" href="/learn/repo-rate-and-your-emi"><b>Repo rate changes and your EMI</b><span>Why your tenure moves and what to check.</span></a></li>
+  <li><a class="item" href="/learn/home-loan-tax-benefits"><b>Home loan tax benefits: Sec 24(b) and 80C</b><span>What you can claim, and how the regimes differ.</span></a></li>
+  <li><a class="item" href="/learn/reading-your-home-loan-statement"><b>Reading your home loan statement</b><span>Disbursements, interest, EMIs and the outstanding.</span></a></li>
+</ul>
+
+{{AD}}
+
+<h2>Safe by design</h2>
+<div class="note">
+  <ul style="margin:0">
+    <li>It never asks for your net-banking password, OTP, card number or UPI PIN, and never connects to your bank.</li>
+    <li>Statement files are read in your browser; only dates, amounts, descriptions and balances are saved.</li>
+    <li>Each loan is private: only you, the people you approve, and the app's administrator (read-only, for support) can see it.
+      <a href="/privacy">Privacy</a> · <a href="/terms">Terms &amp; disclaimer</a></li>
+  </ul>
+</div>
+
+<h2>Questions</h2>
+<details><summary>Is it really free?</summary><p>Yes. The site shows ads from Google to pay for itself; the tracker has no paid plan.</p></details>
+<details><summary>Which banks does it work with?</summary><p>Any bank. Statements are read by their column names (date, debit, credit, balance); if a layout isn't recognised you pick the columns once and it is remembered.</p></details>
+<details><summary>Is this financial advice?</summary><p>No. It is a calculator for your own figures. Your bank's statement and interest certificate are the final word.</p></details>

@@ -212,6 +212,15 @@ tr.bk-open td { background: var(--accent-soft); }
 .home-form[hidden] { display: none; }
 .home-form .grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .home-err { margin: 0; color: var(--bad); font-size: 14px; }
+/* Ad rails: fixed in the empty space left and right of the 1080px content, only when the window is wide enough. */
+.ad-rail { position: fixed; top: 110px; width: 160px; z-index: 3; text-align: center; }
+.ad-rail.left { left: calc(50% - 540px - 190px); }
+.ad-rail.right { right: calc(50% - 540px - 190px); }
+.ad-rail .ad-label { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+@media (max-width: 1459px) { .ad-rail { display: none !important; } }
+@media print { .ad-rail { display: none !important; } }
+/* Demo: nothing is saved, so no backups, sharing or delete. */
+body.demo .panel:has(#cb-now), body.demo #share-panel, body.demo #del-panel { display: none !important; }
 /* Terms screen (shown once per terms version) */
 .terms-box { background: var(--warn-soft); border-left: 4px solid var(--warn); border-radius: 14px; padding: 12px 16px; font-size: 14px; }
 .terms-box ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
@@ -389,7 +398,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     <div class="panel edit-only">
       <div class="panel-head"><h2>Upload bank statements</h2><span class="small muted">PDF, Excel (.xls, .xlsx) or CSV from your bank's website or app</span></div>
       <p class="small muted" style="margin:0">Upload the linked savings account statement and the home loan account statement for the same period. The savings one gives each day's balance; the loan one gives what the bank paid out, the interest it charged and the EMI it received. History → Bank match then checks the two against each other and against the tracker. Files are read in your browser; only dates, amounts, descriptions and balances are saved.</p>
-      <p class="small" style="margin:0;padding:8px 12px;border-radius:8px;background:var(--warn-soft)"><b>Stay safe:</b> download statements only from your bank's official site or app. This app never asks for your net-banking password, OTP, card details or UPI PIN. A PDF's password is used only in this browser and is never saved. <a href="/terms.html" target="_blank" rel="noopener">Terms</a></p>
+      <p class="small" style="margin:0;padding:8px 12px;border-radius:8px;background:var(--warn-soft)"><b>Stay safe:</b> download statements only from your bank's official site or app. This app never asks for your net-banking password, OTP, card details or UPI PIN. A PDF's password is used only in this browser and is never saved. <a href="/terms" target="_blank" rel="noopener">Terms</a></p>
       <form class="stack" id="up-form" style="gap:10px">
         <div class="grid">
           <label class="field"><span>Savings account statement</span><input id="up-file" type="file" accept=".pdf,.xls,.xlsx,.csv,application/pdf"></label>
@@ -745,8 +754,10 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     </div>
   </section>
 
-  <footer>Estimates follow the Home Loan Advantage rule: each day, interest is charged only on the outstanding amount minus your linked savings balance. Your bank statement is the final word; add statement interest under History to check the match. Not financial advice.<div class="legal-links"><a href="/guide.html">How it works</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></div></footer>
+  <footer>Estimates follow the Home Loan Advantage rule: each day, interest is charged only on the outstanding amount minus your linked savings balance. Your bank statement is the final word; add statement interest under History to check the match. Not financial advice.<div class="legal-links"><a href="/guide">How it works</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></div></footer>
 </div>
+<aside class="ad-rail left" id="ad-rail-l" aria-label="Advertisement" hidden></aside>
+<aside class="ad-rail right" id="ad-rail-r" aria-label="Advertisement" hidden></aside>
 <div class="toast" id="toast" hidden></div>
 <div id="gate" class="gate" hidden>
   <div class="gate-wrap">
@@ -770,7 +781,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           <div class="gate-note" id="gate-note" hidden><span id="gate-note-icon"></span><span id="gate-note-text"></span></div>
           <div class="gate-trust" id="gate-trust">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 9.5 4-1.2 7-5 7-9.5V6l-7-3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Each loan is private: only its owner, the people they approve, and the app's administrator (read-only, for support) can see it. <a href="/privacy.html">Privacy</a></span>
+            <span>Each loan is private: only its owner, the people they approve, and the app's administrator (read-only, for support) can see it. <a href="/privacy">Privacy</a></span>
           </div>
         </div>
         <div class="gate-actions">
@@ -782,7 +793,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         </div>
       </div>
     </section>
-    <footer class="gate-foot">Advantage Loan Tracker · <a href="/guide.html">How it works</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></footer>
+    <footer class="gate-foot">Advantage Loan Tracker · <a href="/guide">How it works</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
   </div>
 </div>
 <div id="terms" class="gate" hidden>
@@ -798,7 +809,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         <div class="gate-eyebrow">Before you start</div>
         <h1>Terms &amp; safety</h1>
         <p class="gate-lead">Please read these once. They keep your bank account safe and say what this tracker is, and isn't.</p>
-        <p class="small" style="margin:0"><a href="/guide.html" target="_blank" rel="noopener">How the tracker works</a></p>
+        <p class="small" style="margin:0"><a href="/guide" target="_blank" rel="noopener">How the tracker works</a></p>
       </div>
       <div class="gate-side home-side">
         <div class="terms-box">
@@ -810,7 +821,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
             <li>Your loans are seen only by you, the people you approve, and the app's administrator (read-only, for support).</li>
           </ul>
         </div>
-        <p class="small" style="margin:0">Full text: <a href="/terms.html" target="_blank" rel="noopener">Terms of use &amp; disclaimer</a> · <a href="/privacy.html" target="_blank" rel="noopener">Privacy policy</a></p>
+        <p class="small" style="margin:0">Full text: <a href="/terms" target="_blank" rel="noopener">Terms of use &amp; disclaimer</a> · <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
         <label class="terms-check"><input type="checkbox" id="terms-ok"><span>I have read and agree to the Terms of use &amp; disclaimer and the Privacy policy.</span></label>
         <p class="home-err" id="terms-err" hidden></p>
         <div class="gate-actions">
@@ -834,7 +845,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         <div class="gate-eyebrow">Advantage Loan Tracker</div>
         <h1>Your loans</h1>
         <p class="gate-lead">Open a loan or add one. Each loan keeps its own data and its own list of people it is shared with.</p>
-        <p class="small muted" style="margin:0;max-width:40ch">Only you, the people you approve, and the app's administrator (read-only, for support) can see your loans. <a href="/privacy.html">Privacy</a></p>
+        <p class="small muted" style="margin:0;max-width:40ch">Only you, the people you approve, and the app's administrator (read-only, for support) can see your loans. <a href="/privacy">Privacy</a></p>
         <div class="gate-chip" id="home-chip"><span class="gate-avatar" id="home-avatar"></span><span class="gate-email" id="home-email"></span></div>
       </div>
       <div class="gate-side home-side">
@@ -870,7 +881,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         </div>
       </div>
     </section>
-    <footer class="gate-foot">Figures are estimates; your bank's statement is the final word. Not financial advice. <a href="/guide.html">How it works</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></footer>
+    <footer class="gate-foot">Figures are estimates; your bank's statement is the final word. Not financial advice. <a href="/guide">How it works</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
   </div>
 </div>
 <div id="admin" class="gate" hidden>
@@ -947,6 +958,8 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   let LOAN_ID = "", BASE = "";
   // The app's administrator looking at someone else's loan (read-only, salary shown): that loan's owner email.
   let superOwner = "";
+  // /demo: the tracker filled with made-up sample data (hosting/demo-seed.js), no sign-in, nothing saved.
+  let demoMode = false;
   // First answers from the server for the settings documents. They keep the placeholder defaults from being saved over real
   // data and drive the banner. healSettings then compares them with the server itself (serverChecked / serverOverride).
   let settingsLoaded = false, settingsMissing = false, salaryLoaded = false, salaryMissing = false, mirrorLoaded = false, healTried = false, healSalary = false;
@@ -1119,6 +1132,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       ? "The loan settings are missing from the database, so the dates shown are placeholders. Open <b>Loan settings</b>, enter your disbursal date and first EMI date and save."
       : "Loan dates are placeholders. Open <b>Loan settings</b> and enter your disbursal date and first EMI date so the past months line up with your account.");
     if (dbFailed) bn.push("Saving is not available in this view, so changes last only until you close the page.");
+    if (demoMode) bn.push("<b>Demo with sample data:</b> look around and try anything; nothing is saved. <a href=\"/app\">Sign in with Google</a> to track your own loan.");
     if (superOwner) bn.push("<b>Admin view, read-only:</b> " + esc(superOwner) + "'s loan. Nothing can be changed from here.");
     else if (readOnly) bn.push("You can view this tracker but not change it.");
     if (!navigator.onLine) bn.push("You're offline. This is the last saved data; changes you make will save when you're back online.");
@@ -1250,7 +1264,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   function lockUntil() { try { return +sessionStorage.getItem(LOCK_KEY) || 0; } catch (e) { return 0; } }
   function setLockUntil(t) { try { if (t) sessionStorage.setItem(LOCK_KEY, String(t)); else sessionStorage.removeItem(LOCK_KEY); } catch (e) {} }
   function syncSalary() {
-    const want = superOwner ? true : !lockLoaded ? false : lockOn() ? lockUntil() > Date.now() : false;
+    const want = superOwner || demoMode ? true : !lockLoaded ? false : lockOn() ? lockUntil() > Date.now() : false;
     if (want !== showSalary) { showSalary = want; if (!want) setLockUntil(0); schedule(); }
   }
   const b64 = (buf) => btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(buf))));
@@ -3283,13 +3297,13 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     go.disabled = false;
   });
   $("inv-copy").addEventListener("click", () => {
-    const h = loanHead || {}, link = location.origin + "/?loan=" + encodeURIComponent(LOAN_ID);
+    const h = loanHead || {}, link = location.origin + "/app?loan=" + encodeURIComponent(LOAN_ID);
     const text = (ownerName || "I") + " shared a home loan tracker with you" + (h.name ? ": " + h.name : "") + ". Open it and sign in with Google" +
       (invLast ? " as " + invLast : "") + ": " + link;
     navigator.clipboard.writeText(text).then(() => toast("Copied. Paste it in Gmail, WhatsApp or any app.")).catch(() => toast(text));
   });
   $("share-copy").addEventListener("click", () => {
-    const link = location.origin + "/?loan=" + encodeURIComponent(LOAN_ID);
+    const link = location.origin + "/app?loan=" + encodeURIComponent(LOAN_ID);
     navigator.clipboard.writeText(link).then(() => toast("Link copied: " + link)).catch(() => toast(link));
   });
   // ---------- delete this loan (owner) ----------
@@ -3331,7 +3345,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     if (!loanHead || $("del-confirm").value.trim() !== (loanHead.name || "").trim()) return;
     $("del-go").disabled = true;
     try {
-      if (await deleteLoan(false)) { toast("Loan deleted."); location.href = "/?home"; }
+      if (await deleteLoan(false)) { toast("Loan deleted."); location.href = "/app?home"; }
       else $("del-go").disabled = false;
     } catch (e) {
       $("del-msg").textContent = "The delete didn't finish. Check your connection and open this loan again to finish it.";
@@ -3341,6 +3355,45 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     const a = e.target.closest("[data-goto]"); if (!a) return;
     e.preventDefault(); showTab(a.dataset.goto); $("share-panel").scrollIntoView({ block: "start" });
   });
+
+  // ---------- ads beside the tracker (Google AdSense) ----------
+  // Only in the side rails, only on windows at least 1460px wide, and never for the app's administrator (his own
+  // clicks would break AdSense's rules) or on the sign-in screens. hosting/build.py puts the ids in window.SITE_ADS;
+  // with no ids nothing loads.
+  let adsAllowed = false, adsLoaded = false;
+  function loadAds() {
+    const A = window.SITE_ADS || {};
+    if (!adsAllowed || adsLoaded || !A.client || !A.rail || window.innerWidth < 1460) return;
+    adsLoaded = true;
+    const sc = document.createElement("script");
+    sc.async = true; sc.crossOrigin = "anonymous";
+    sc.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" + encodeURIComponent(A.client);
+    document.head.appendChild(sc);
+    ["ad-rail-l", "ad-rail-r"].forEach((id) => {
+      const el = $(id);
+      el.innerHTML = "<span class='ad-label'>Advertisement</span><ins class='adsbygoogle' style='display:inline-block;width:160px;height:600px' data-ad-client='" +
+        esc(A.client) + "' data-ad-slot='" + esc(A.rail) + "'></ins>";
+      el.hidden = false;
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    });
+  }
+  function allowAds() { adsAllowed = true; loadAds(); }
+  window.addEventListener("resize", () => { if (adsAllowed && !adsLoaded) loadAds(); });
+
+  // ---------- demo ----------
+  function loadDemo(seed) {
+    demoMode = true; lockLoaded = true;
+    document.body.classList.add("demo");
+    const h = location.hash.slice(1);
+    showTab(h && document.querySelector('section[data-panel="' + h + '"]') ? h : "overview"); // not the tab last used in the real tracker
+    state.settings = Object.assign({}, DEFAULTS, seed.settings || {});
+    ["balances", "rates", "prepay", "statements", "txns", "disb", "loantx"].forEach((c) => { state[c] = (seed[c] || []).slice(); });
+    state.goal = seed.goal || null; state.tax = seed.tax || null; state.cats = seed.cats || null;
+    if (seed.label) $("loan-label").textContent = seed.label;
+    document.title = "Demo · Advantage Loan Tracker";
+    syncSalary(); schedule();
+    allowAds();
+  }
 
   // ---------- connect db ----------
   // Hosted copy (window.FIREBASE_CONFIG set): Google sign-in + Firestore. The owner gets the full tracker;
@@ -3488,19 +3541,19 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         else $("gate-msg").textContent = "Sign-in didn't finish. Try again.";
       });
     });
-    const signOut = () => auth.signOut().then(() => { location.href = "/"; });
+    const signOut = () => auth.signOut().then(() => { location.href = "/app"; });
     $("gate-signout").addEventListener("click", signOut);
     $("gate-switch").addEventListener("click", signOut); // signs out; the page then offers "Sign in with Google" again
     $("signout").addEventListener("click", signOut);
     $("home-signout").addEventListener("click", signOut);
     // "My loans" (account menu, and the no-access screens) goes back to the list of loans; the administrator has no
     // loans of his own, so for him it is the admin dashboard.
-    const goHome = () => { location.href = isSuper(firebase.auth().currentUser) ? "/?admin" : "/?home"; };
+    const goHome = () => { location.href = isSuper(firebase.auth().currentUser) ? "/app?admin" : "/app?home"; };
     $("myloans-btn").addEventListener("click", goHome);
     $("gate-home").addEventListener("click", goHome);
     $("adm-signout").addEventListener("click", signOut);
     $("terms-signout").addEventListener("click", signOut);
-    $("help-btn").addEventListener("click", () => { acctMenu(false); window.open("/guide.html", "_blank", "noopener"); });
+    $("help-btn").addEventListener("click", () => { acctMenu(false); window.open("/guide", "_blank", "noopener"); });
     // Terms of use: accepted once per version (users/<uid>.termsVersion); a new version asks again.
     const TERMS_VERSION = "2026-10-07";
     function acceptTerms(user) {
@@ -3523,7 +3576,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     }
     // The app's administrator (FIREBASE_CONFIG.superAdmin). The page only shows him the dashboard; the rules are what allow the reads.
     const isSuper = (user) => !!(user && FB.superAdmin && user.email === FB.superAdmin && user.emailVerified);
-    $("admin-btn").addEventListener("click", () => { location.href = "/?admin"; });
+    $("admin-btn").addEventListener("click", () => { location.href = "/app?admin"; });
 
     // ---------- admin dashboard (/?admin): every user and loan ----------
     let admRows = [];
@@ -3580,7 +3633,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     $("adm-q").addEventListener("input", renderAdmin);
     $("adm-body").addEventListener("click", (e) => {
       const b = e.target.closest("button[data-adm-open]"); if (!b) return;
-      location.href = "/?loan=" + encodeURIComponent(b.dataset.admOpen);
+      location.href = "/app?loan=" + encodeURIComponent(b.dataset.admOpen);
     });
 
     // ---------- "Your loans": the user's own loans and the ones shared with them ----------
@@ -3614,7 +3667,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     }
     $("home").addEventListener("click", (e) => {
       const b = e.target.closest("button[data-open]"); if (!b) return;
-      location.href = "/?loan=" + encodeURIComponent(b.dataset.open);
+      location.href = "/app?loan=" + encodeURIComponent(b.dataset.open);
     });
     function openForm(on) {
       $("nl-form").hidden = !on; $("home-actions").hidden = on;
@@ -3640,7 +3693,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           emi: null, startDate: start, firstEmiDate: first, configured: true
         });
         await rememberLoan(user, id);
-        location.href = "/?loan=" + encodeURIComponent(id);
+        location.href = "/app?loan=" + encodeURIComponent(id);
       } catch (ex) { $("nl-save").disabled = false; err("Couldn't create the loan. Check your connection and try again."); }
     });
 
@@ -3658,7 +3711,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       try { const s = await fs.doc("loans/" + id).get(); head = s.exists ? s.data() : null; gone = !s.exists; } catch (e) { head = null; }
       if (gone) {
         userDoc(user).get().then((u) => { if (u.exists && u.data().lastLoanId === id) userDoc(user).set({ lastLoanId: "" }, { merge: true }); }).catch(() => {});
-        if (fromLast) { history.replaceState(null, "", "/?home"); showHome(user); return; }
+        if (fromLast) { history.replaceState(null, "", "/app?home"); showHome(user); return; }
         gate("gone", user.email);
         return;
       }
@@ -3670,7 +3723,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           // A delete was started and didn't finish: finish it, then go back to the list.
           GATE.loading.msg = "Finishing deleting this loan.";
           gate("loading");
-          try { await deleteLoan(true); location.href = "/?home"; }
+          try { await deleteLoan(true); location.href = "/app?home"; }
           catch (e) { GATE.loading.msg = "Couldn't finish deleting this loan. Check your connection and reload the page."; gate("loading"); }
           return;
         }
@@ -3756,12 +3809,13 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       // Last seen (and the email, so the admin dashboard can list people who have no loan yet).
       userDoc(user).set({ email: user.email, seenAt: new Date().toISOString() }, { merge: true }).catch(() => {});
       const q = new URLSearchParams(location.search);
+      if (!isSuper(user)) allowAds();
       // The administrator never gets loans of his own: the admin dashboard, or a user's loan opened from it (read-only).
       if (isSuper(user)) {
         $("gate-home").textContent = "Admin dashboard";
         const lid = q.get("loan");
         if (lid) { openLoan(user, lid); return; }
-        history.replaceState(null, "", "/?admin");
+        history.replaceState(null, "", "/app?admin");
         showAdmin(user);
         return;
       }
@@ -3772,13 +3826,14 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         try {
           const u = await userDoc(user).get();
           const last = u.exists ? u.data().lastLoanId : "";
-          if (last) { history.replaceState(null, "", "/?loan=" + encodeURIComponent(last) + location.hash); openLoan(user, last, true); return; }
+          if (last) { history.replaceState(null, "", "/app?loan=" + encodeURIComponent(last) + location.hash); openLoan(user, last, true); return; }
         } catch (e) {}
       }
       showHome(user);
     });
   } else {
     (async function () {
+      if (window.DEMO_SEED) { loadDemo(window.DEMO_SEED); return; }
       let api = null;
       try { api = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { api = null; }
       if (!api) { dbFailed = true; schedule(); return; }

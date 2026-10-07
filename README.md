@@ -143,6 +143,17 @@ The engine and UI were checked by loading `index.html` in jsdom and comparing ag
 - Figures after today are estimates. For tax filing use the bank's interest certificate.
 - Not financial advice.
 
+## Public site, SEO and ads
+
+- `/` landing, `/calculator`, `/learn/…` (articles), `/guide`, `/terms`, `/privacy`, `/demo` (the tracker with sample data,
+  no sign-in) are public and indexed; the tracker itself is at **`/app`** (not indexed). Old `/?loan=…` links forward to `/app`.
+- Public pages live in `hosting/site/` and start with `<!--page {...}-->` (title, description, path, …); `hosting/build.py`
+  adds the head (title, description, canonical, Open Graph / Twitter, JSON-LD), header and footer, and writes
+  `robots.txt` and `sitemap.xml`. Security headers are in `hosting/firebase.json`.
+- **Google AdSense:** put the `ca-pub-…` id in `ADS["client"]` in `hosting/build.py` (adds the AdSense script and `ads.txt`),
+  and the ad-unit slot numbers in `ADS["content"]` (in-page units) and `ADS["rail"]` (160×600 rails beside the tracker on
+  screens ≥1460 px). The administrator's account never loads ads. In AdSense, keep Auto ads off for `/app` and `/demo`.
+
 ## Daily backup setup (one time)
 
 Every night at 23:30 IST GitHub Actions (`.github/workflows/daily-backup.yml`) runs `hosting/backup.js`, which backs up

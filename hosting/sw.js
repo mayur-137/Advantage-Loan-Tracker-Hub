@@ -1,9 +1,11 @@
-// Service worker: lets the installed app open without a connection.
-// The page is fetched network-first (so updates show at once) and falls back to the saved copy offline.
-// Libraries and fonts from the CDNs are kept after first use. Sign-in and database traffic is never touched;
+// Service worker: lets the installed app (/app) open without a connection.
+// The tracker page is fetched network-first (so updates show at once) and falls back to the saved copy offline.
+// Other pages (landing, articles, calculator) are always fetched from the network and never kept.
+// Libraries and fonts from the CDNs are kept after first use. Sign-in, database and ad traffic is never touched;
 // Firestore keeps its own offline copy of the data.
-const CACHE = "loan-tracker-v1";
-const SHELL = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE = "loan-tracker-v2";
+const APP = "/app";
+const SHELL = [APP, "/manifest.json", "/icon-192.png", "/icon-512.png"];
 const CDN = /^https:\/\/(www\.gstatic\.com\/firebasejs\/|cdnjs\.cloudflare\.com\/|fonts\.googleapis\.com\/|fonts\.gstatic\.com\/)/;
 
 self.addEventListener("install", (e) => {
@@ -17,11 +19,11 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (req.mode === "navigate" && url.origin === location.origin) {
+    if (url.pathname !== APP) return; // not the tracker: plain network
     e.respondWith(fetch(req).then((res) => {
-      // Only the app page is kept for offline use (not other pages such as /privacy.html).
-      if (url.pathname === "/" && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put("/", copy)); }
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(APP, copy)); }
       return res;
-    }).catch(() => caches.match("/")));
+    }).catch(() => caches.match(APP)));
     return;
   }
   if ((url.origin === location.origin && SHELL.indexOf(url.pathname) >= 0) || CDN.test(req.url)) {

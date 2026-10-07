@@ -2,7 +2,7 @@
   "name": "Advantage Loan Tracker Hub",
   "short_name": "Loan Tracker",
   "description": "Tracker for savings-linked home loans from any bank: daily interest, savings offset and payoff plan.",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f3f6f4",

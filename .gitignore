@@ -9,7 +9,13 @@ hosting/migrate-backup.json
 # Tooling and build output
 hosting/node_modules/
 hosting/.firebase/
-hosting/public/index.html
+hosting/public/*.html
+hosting/public/learn/
+hosting/public/site.css
+hosting/public/robots.txt
+hosting/public/sitemap.xml
+hosting/public/ads.txt
+hosting/public/demo-seed.js
 hosting/public/manifest.json
 hosting/public/sw.js
 hosting/public/privacy.html

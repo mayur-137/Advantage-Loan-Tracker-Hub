@@ -1,0 +1,90 @@
+<!--page {"title": "Home loan EMI & savings-linked interest calculator (MaxGain, Home Loan Advantage) · Advantage Loan Tracker", "og_title": "Free EMI + savings-linked home loan calculator", "description": "Free calculator: home loan EMI, daily interest, and how much interest a balance in your linked savings account saves, with the months it cuts off your loan. For MaxGain, Home Loan Advantage, Money Saver and similar loans.", "path": "/calculator", "nav": "calc", "card": false, "priority": "0.9", "crumbs": [["Home", "/"], ["Calculator", "/calculator"]], "jsonld": [{"@context": "https://schema.org", "@type": "WebApplication", "name": "EMI and savings-linked home loan calculator", "url": "https://advantage-loan-tracker-hub.web.app/calculator", "applicationCategory": "FinanceApplication", "operatingSystem": "Any (web browser)", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"}}]}-->
+<h1>EMI &amp; savings-linked home loan calculator</h1>
+<p class="lead">Work out your EMI, and see how much interest a balance kept in your loan-linked savings account saves, and how many months it
+  takes off the loan. Everything is calculated in your browser; nothing is sent anywhere.</p>
+
+<div class="card">
+  <form class="form" id="calc" onsubmit="return false">
+    <label class="field"><span>Loan amount (₹)</span><input id="c-p" type="number" inputmode="numeric" min="10000" step="1000" value="3200000"></label>
+    <label class="field"><span>Interest rate (% a year)</span><input id="c-r" type="number" inputmode="decimal" min="1" max="20" step="0.05" value="7.30"></label>
+    <label class="field"><span>Tenure (years)</span><input id="c-n" type="number" inputmode="numeric" min="1" max="40" step="1" value="24"></label>
+    <label class="field"><span>Balance kept in the linked account (₹)</span><input id="c-b" type="number" inputmode="numeric" min="0" step="1000" value="500000"></label>
+    <label class="field"><span>Added to that balance each month (₹)</span><input id="c-g" type="number" inputmode="numeric" min="0" step="500" value="0"></label>
+  </form>
+</div>
+
+<div class="results" aria-live="polite">
+  <div class="tile hero-tile"><p>Monthly EMI</p><div class="big" id="o-emi">–</div></div>
+  <div class="tile"><p>Interest today, nothing in savings</p><div class="big" id="o-day0">–</div></div>
+  <div class="tile"><p>Interest today, with your balance</p><div class="big" id="o-day1">–</div></div>
+  <div class="tile hero-tile"><p>Interest saved over the loan</p><div class="big" id="o-saved">–</div></div>
+  <div class="tile"><p>Total interest, normal loan</p><div class="big" id="o-int0">–</div></div>
+  <div class="tile"><p>Total interest, with your balance</p><div class="big" id="o-int1">–</div></div>
+  <div class="tile hero-tile"><p>Loan closes earlier by</p><div class="big" id="o-early">–</div></div>
+  <div class="tile"><p>Years to close, with your balance</p><div class="big" id="o-years">–</div></div>
+</div>
+
+{{AD}}
+
+<h2>Year by year</h2>
+<div class="tablewrap"><table>
+  <thead><tr><th>Year</th><th class="num">Interest (normal)</th><th class="num">Interest (with balance)</th><th class="num">Outstanding (normal)</th><th class="num">Outstanding (with balance)</th></tr></thead>
+  <tbody id="o-years-body"></tbody>
+</table></div>
+
+<h2>How it is calculated</h2>
+<ul>
+  <li><b>EMI</b> = P × r × (1 + r)<sup>n</sup> ÷ ((1 + r)<sup>n</sup> − 1), where r is the monthly rate and n the number of months.</li>
+  <li><b>Interest for a day</b> = (outstanding − savings balance) × rate ÷ 365, never below zero.
+    Example: ₹32,00,000 at 7.30% with nothing in savings is ₹640 a day; with ₹5,00,000 in the linked account it is ₹540.</li>
+  <li>The EMI stays the same. Because less of it goes to interest, more repays the loan, so it closes sooner.</li>
+  <li>This page works month by month with the balance you enter. Real balances move every day; to follow your actual loan
+    day by day, with your bank's own figures, use the <a href="/app">tracker</a> (or look at the <a href="/demo">demo</a>).</li>
+</ul>
+<p class="small muted">An estimate for planning, not financial advice. Your bank's statement is the final word.
+  <a href="/learn/prepay-or-keep-in-savings">Prepay or keep it in savings?</a></p>
+
+<script>
+(function () {
+  const inr = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
+  const rs = (n) => "₹" + inr.format(Math.round(n));
+  const $ = (id) => document.getElementById(id);
+  function run(P, rate, months, bal0, grow) {
+    const r = rate / 1200, f = Math.pow(1 + r, months), emi = P * r * f / (f - 1);
+    let out = P, total = 0, m = 0;
+    const years = [];
+    let yInt = 0;
+    while (out > 0.5 && m < months * 3) {
+      const bal = Math.min(out, bal0 + grow * m);
+      const interest = Math.max(0, out - bal) * r;
+      const pay = Math.min(emi, out + interest);
+      out = out + interest - pay; total += interest; yInt += interest; m++;
+      if (m % 12 === 0 || out <= 0.5) { years.push({ interest: yInt, out: Math.max(0, out) }); yInt = 0; }
+    }
+    return { emi, total, months: m, years };
+  }
+  function update() {
+    const P = +$("c-p").value, rate = +$("c-r").value, n = Math.round(+$("c-n").value * 12), b = Math.max(0, +$("c-b").value || 0), g = Math.max(0, +$("c-g").value || 0);
+    if (!(P > 0 && rate > 0 && n > 0)) return;
+    const a = run(P, rate, n, 0, 0), s = run(P, rate, n, b, g);
+    $("o-emi").textContent = rs(a.emi);
+    $("o-day0").textContent = rs(P * rate / 36500);
+    $("o-day1").textContent = rs(Math.max(0, P - b) * rate / 36500);
+    $("o-int0").textContent = rs(a.total);
+    $("o-int1").textContent = rs(s.total);
+    $("o-saved").textContent = rs(a.total - s.total);
+    const early = a.months - s.months;
+    $("o-early").textContent = early > 0 ? (early >= 12 ? Math.floor(early / 12) + " yr " : "") + (early % 12) + " mo" : "–";
+    $("o-years").textContent = (s.months / 12).toFixed(1) + " yrs";
+    const rows = [];
+    for (let i = 0; i < a.years.length; i++) {
+      const x = a.years[i], y = s.years[i];
+      rows.push("<tr><td>" + (i + 1) + "</td><td class='num'>" + rs(x.interest) + "</td><td class='num'>" + (y ? rs(y.interest) : "–") +
+        "</td><td class='num'>" + rs(x.out) + "</td><td class='num'>" + (y ? rs(y.out) : "closed") + "</td></tr>");
+    }
+    $("o-years-body").innerHTML = rows.join("");
+  }
+  $("calc").addEventListener("input", update);
+  update();
+})();
+</script>

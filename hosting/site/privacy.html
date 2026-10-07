@@ -1,34 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Privacy · Advantage Loan Tracker</title>
-<link rel="icon" href="/icon-192.png">
-<style>
-:root { --bg: #f3f6f4; --surface: #ffffff; --fg: #17211c; --muted: #5b6b62; --line: #d3ddd7; --accent: #1d6b52; color-scheme: light; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #0f1613; --surface: #17211c; --fg: #e3ece7; --muted: #94a69c; --line: #2b3a33; --accent: #5cc49b; color-scheme: dark; }
-}
-:root[data-theme="dark"] { --bg: #0f1613; --surface: #17211c; --fg: #e3ece7; --muted: #94a69c; --line: #2b3a33; --accent: #5cc49b; color-scheme: dark; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 28px; }
-h1 { font-size: 30px; line-height: 1.2; margin: 0 0 6px; font-weight: 600; }
-h2 { font-size: 18px; margin: 28px 0 6px; }
-p, li { margin: 0 0 10px; }
-ul { padding-left: 20px; margin: 0 0 10px; }
-.muted { color: var(--muted); font-size: 14px; }
-a { color: var(--accent); }
-@media (max-width: 600px) { .card { padding: 20px 16px; } h1 { font-size: 26px; } }
-</style>
-</head>
-<body>
-<main>
-  <nav style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:14px;font-size:14px"><a href="/">Tracker</a><a href="/guide.html">How it works</a><a href="/terms.html">Terms &amp; disclaimer</a></nav>
-  <div class="card">
+<!--page {"title": "Privacy policy · Advantage Loan Tracker", "description": "What Advantage Loan Tracker stores, who can see your loan data, how statements are read in your browser, Google ads and cookies, and how to delete your data.", "path": "/privacy", "nav": "", "ads": false, "crumbs": [["Home", "/"], ["Privacy", "/privacy"]]}-->
     <h1>Privacy</h1>
-    <p class="muted">Advantage Loan Tracker · last updated 7 October 2026</p>
+    <p class="muted">Advantage Loan Tracker · last updated 7 October 2026 (ads added)</p>
 
     <h2>What is stored</h2>
     <ul>
@@ -53,7 +25,22 @@ a { color: var(--accent); }
         support and keep the service working. The administrator cannot change or delete your data, and the database
         rules enforce this.</li>
     </ul>
-    <p>Your data is not sold, shared with advertisers or used for anything else.</p>
+    <p>Your loan data is never sold, never shared with advertisers and not used for anything else.</p>
+
+    <h2>Ads and cookies</h2>
+    <ul>
+      <li>The public pages (home, calculator, articles, guide, demo) and, on wide screens, the space beside the tracker show
+        ads from <b>Google AdSense</b>. Google and its partners use cookies and similar technology to show ads and measure
+        them, based on your visits to this and other sites. See
+        <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">how Google uses data from partner sites</a>.</li>
+      <li>You can turn off personalised ads at <a href="https://adssettings.google.com" rel="noopener">adssettings.google.com</a>
+        (or <a href="https://www.aboutads.info/choices/" rel="noopener">aboutads.info</a>).</li>
+      <li>Visitors in the EEA, the UK and Switzerland are asked for consent before personalised ads are shown.</li>
+      <li>The ad code runs in the page like any other script. The tracker never sends your loan figures, salary or
+        statements to it, and no ads are shown on the sign-in, terms and privacy screens.</li>
+      <li>The tracker itself keeps a copy of your data in your browser (for offline use) and remembers small settings such
+        as the last tab you opened.</li>
+    </ul>
 
     <h2>Where it is kept</h2>
     <p>In Google Firebase (Cloud Firestore, Mumbai region asia-south1), protected by Google sign-in and database security rules.</p>
@@ -69,8 +56,5 @@ a { color: var(--accent); }
     <h2>Contact</h2>
     <p>Questions or requests: <a href="mailto:mayursavaliya150@gmail.com">mayursavaliya150@gmail.com</a></p>
 
-    <p class="muted" style="margin-top:28px"><a href="/">Back to the tracker</a> · <a href="/guide.html">How it works</a> · <a href="/terms.html">Terms &amp; disclaimer</a></p>
-  </div>
-</main>
-</body>
-</html>
+    <p class="muted" style="margin-top:28px"><a href="/app">Back to the tracker</a> · <a href="/guide">How it works</a> · <a href="/terms">Terms &amp; disclaimer</a></p>
+  
