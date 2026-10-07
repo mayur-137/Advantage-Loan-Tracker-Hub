@@ -231,6 +231,8 @@ body.superview .wrap form button[type="submit"], body.superview form.edit-only {
 .adm-tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 #adm-q { width: 100%; }
 #admin td.l, #admin th.l { text-align: left; white-space: normal; }
+#map-table th, #map-table td { text-align: left; }
+#map-table td { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 #admin tr.adm-user td { border-top: 2px solid var(--line); }
 @media (max-width: 760px) { .adm-card { padding: 22px 16px; border-radius: 22px; } }
 footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70ch; }
@@ -385,7 +387,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   <!-- BALANCES -->
   <section data-panel="balances" class="stack" hidden>
     <div class="panel edit-only">
-      <div class="panel-head"><h2>Upload bank statements</h2><span class="small muted">PDF, Excel (.xls, .xlsx) or CSV from bob World</span></div>
+      <div class="panel-head"><h2>Upload bank statements</h2><span class="small muted">PDF, Excel (.xls, .xlsx) or CSV from your bank's website or app</span></div>
       <p class="small muted" style="margin:0">Upload the linked savings account statement and the home loan account statement for the same period. The savings one gives each day's balance; the loan one gives what the bank paid out, the interest it charged and the EMI it received. History → Bank match then checks the two against each other and against the tracker. Files are read in your browser; only dates, amounts, descriptions and balances are saved.</p>
       <p class="small" style="margin:0;padding:8px 12px;border-radius:8px;background:var(--warn-soft)"><b>Stay safe:</b> download statements only from your bank's official site or app. This app never asks for your net-banking password, OTP, card details or UPI PIN. A PDF's password is used only in this browser and is never saved. <a href="/terms.html" target="_blank" rel="noopener">Terms</a></p>
       <form class="stack" id="up-form" style="gap:10px">
@@ -399,13 +401,22 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       </form>
       <div class="small" id="up-msg"></div>
       <div class="small" id="ln-msg"></div>
+      <div id="map-box" class="stack" style="gap:10px;border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:var(--surface-2)" hidden>
+        <h3 id="map-title" style="margin:0">Choose the columns</h3>
+        <p class="small" id="map-why" style="margin:0"></p>
+        <div class="grid" id="map-fields"></div>
+        <div class="tablebox"><table id="map-table"><thead id="map-thead"></thead><tbody id="map-tbody"></tbody></table></div>
+        <p class="small" id="map-err" style="margin:0;color:var(--bad)" hidden></p>
+        <div><button class="btn" type="button" id="map-use">Use these columns</button> <button class="btn ghost" type="button" id="map-cancel">Cancel</button>
+          <span class="small muted">Your choice is remembered for files with the same layout.</span></div>
+      </div>
       <div id="up-preview" hidden class="stack" style="gap:10px">
-        <h3>Savings account</h3>
+        <h3>Savings account <button class="link" type="button" id="up-map-btn" style="color:var(--accent);font-size:.85rem" hidden>Columns wrong? Choose them</button></h3>
         <div class="split" id="up-summary"></div>
         <div class="tablebox tall"><table><thead><tr><th>Date</th><th>Description</th><th>In</th><th>Out</th><th>Balance</th></tr></thead><tbody id="up-body"></tbody></table></div>
       </div>
       <div id="ln-preview" hidden class="stack" style="gap:10px">
-        <h3>Home loan account</h3>
+        <h3>Home loan account <button class="link" type="button" id="ln-map-btn" style="color:var(--accent);font-size:.85rem" hidden>Columns wrong? Choose them</button></h3>
         <div class="tablebox"><table><thead><tr><th>Date</th><th>What</th><th>Amount</th><th>Outstanding</th><th>Description</th></tr></thead><tbody id="ln-body"></tbody></table></div>
       </div>
       <div id="imp-bar" hidden><button class="btn" type="button" id="up-import">Import</button> <button class="btn ghost" type="button" id="up-cancel">Cancel</button></div>
@@ -1869,28 +1880,85 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     return dr ? -n : n;
   }
 
-  // Spreadsheet rows: find the header row, then read the columns by name.
-  function parseTable(rows) {
-    for (let i = 0; i < Math.min(rows.length, 80); i++) {
-      const cells = rows[i].map(c => String(c == null ? "" : c).toLowerCase().trim());
-      let di = cells.findIndex(c => /date/.test(c) && !/value/.test(c));
-      if (di < 0) di = cells.findIndex(c => /date/.test(c));
-      const bi = cells.findIndex(c => /balance/.test(c));
-      if (di < 0 || bi < 0) continue;
-      const col = {
-        dr: cells.findIndex(c => /withdraw|debit|^dr\.?$|paid out/.test(c)),
-        cr: cells.findIndex(c => /deposit|credit|^cr\.?$|paid in/.test(c)),
-        desc: cells.findIndex(c => /narration|particular|description|remark|details/.test(c))
-      };
-      const out = [];
-      for (let j = i + 1; j < rows.length; j++) {
-        const r = rows[j], date = anyDate(r[di]), bal = amt(r[bi]);
-        if (!date || !isFinite(bal)) continue;
-        out.push({ date, bal, dr: col.dr >= 0 ? amt(r[col.dr]) : NaN, cr: col.cr >= 0 ? amt(r[col.cr]) : NaN, desc: col.desc >= 0 ? String(r[col.desc] || "").trim() : "" });
+  // Spreadsheets (Excel / CSV): find the header row, then read the columns by name. Banks lay these out differently:
+  // separate withdrawal / deposit columns, one amount column plus a Dr/Cr column, or one signed amount column, and a
+  // header can take two rows ("Withdrawal" over "Amt."). When the person has chosen the columns for a layout once, the
+  // choice is remembered (bankProfiles) and used whenever a file with exactly the same header turns up.
+  const cellText = (c) => (c == null || c instanceof Date ? "" : String(c)).toLowerCase().replace(/\s+/g, " ").trim();
+  const BLANK_MAP = { date: -1, desc: -1, dr: -1, cr: -1, amount: -1, type: -1, bal: -1 };
+  function guessColumns(cells) {
+    const find = (re, skip) => cells.findIndex((c, i) => c && re.test(c) && (skip || []).indexOf(i) < 0);
+    let date = find(/^((txn|tran|trans|transaction|posting|post|book|booking)\.? ?(date|dt\.?)|date|dt\.?)$/);
+    if (date < 0) date = cells.findIndex((c) => /date/.test(c) && !/value/.test(c));
+    if (date < 0) date = find(/date/);
+    const bal = find(/balance|^bal\.?$/);
+    const type = find(/^(dr ?\/ ?cr|cr ?\/ ?dr|d ?\/ ?c|c ?\/ ?d|type|txn type|tran type|transaction type|debit ?\/ ?credit|credit ?\/ ?debit|dr ?\/ ?cr indicator)$/);
+    const dr = find(/withdraw|debit|^dr\.?( amount| amt\.?)?$|paid out/, [type, bal]);
+    const cr = find(/deposit|credit|^cr\.?( amount| amt\.?)?$|paid in/, [type, bal, dr]);
+    const amount = dr < 0 && cr < 0 ? find(/amount|^amt\.?$/, [type, bal]) : -1;
+    const desc = find(/narration|naration|particular|description|remark|details/, [date, bal, dr, cr, type, amount]);
+    return { date, bal, dr, cr, amount, type, desc };
+  }
+  const sigOf = (cells) => cells.filter(Boolean).join("|");
+  let bankProfiles = null; // header signature -> column numbers the person chose
+  function findHeader(rows) {
+    const n = Math.min(rows.length, 80);
+    for (let i = 0; i < n; i++) {
+      const one = rows[i].map(cellText);
+      if (!one.some(Boolean)) continue;
+      const tries = [[one, 1]];
+      if (rows[i + 1]) tries.push([one.map((c, k) => (c + " " + cellText(rows[i + 1][k])).trim()), 2]);
+      for (const [cells, skip] of tries) {
+        const p = bankProfiles && bankProfiles[sigOf(cells)];
+        if (p) return { at: i + skip - 1, start: i + skip, cells, map: Object.assign({}, BLANK_MAP, p), saved: true };
       }
-      return out;
+      for (const [cells, skip] of tries) {
+        const g = guessColumns(cells);
+        if (g.date >= 0 && g.bal >= 0) return { at: i + skip - 1, start: i + skip, cells, map: g };
+      }
     }
     return null;
+  }
+  function readRows(rows, start, m) {
+    const out = [];
+    // One amount column without a Dr/Cr column: signed when any value is negative (then plus is money in).
+    const signed = m.amount >= 0 && m.type < 0 && rows.slice(start).some((r) => amt((r || [])[m.amount]) < 0);
+    for (let j = start; j < rows.length; j++) {
+      const r = rows[j] || [], date = m.date >= 0 ? anyDate(r[m.date]) : null, bal = m.bal >= 0 ? amt(r[m.bal]) : NaN;
+      if (!date || !isFinite(bal)) continue;
+      let dr = m.dr >= 0 ? Math.abs(amt(r[m.dr])) : NaN, cr = m.cr >= 0 ? Math.abs(amt(r[m.cr])) : NaN;
+      if (m.amount >= 0) {
+        const v = amt(r[m.amount]), t = m.type >= 0 ? cellText(r[m.type]) : "";
+        if (isFinite(v) && v) {
+          if (/^(d\b|dr|debit|withdraw)/.test(t)) dr = Math.abs(v);
+          else if (/^(c\b|cr|credit|deposit)/.test(t)) cr = Math.abs(v);
+          else if (v < 0) dr = -v; // one signed column: minus (or "Dr") is money out, plus is money in
+          else if (signed) cr = v; // (all plus: the balance tells which way each row went)
+        }
+      }
+      out.push({ date, bal, dr, cr, desc: m.desc >= 0 ? String(r[m.desc] == null ? "" : r[m.desc]).replace(/\s+/g, " ").trim() : "" });
+    }
+    return out;
+  }
+  // How well the rows add up: the share of rows (with an amount) where the previous balance plus credits minus debits
+  // gives this balance. dir 1 is a savings account; dir -1 a loan account, whose outstanding goes up with debits.
+  // null when no row has an amount to check.
+  function fitScore(list, dir) {
+    if (list.length && list[0].date > list[list.length - 1].date) list = list.slice().reverse();
+    let n = 0, ok = 0;
+    for (let i = 1; i < list.length; i++) {
+      const t = list[i], d = (isFinite(t.cr) ? t.cr : 0) - (isFinite(t.dr) ? t.dr : 0);
+      if (!d) continue;
+      n++;
+      if (Math.abs(Math.abs(list[i - 1].bal) + dir * d - Math.abs(t.bal)) < 0.02) ok++;
+    }
+    return n ? ok / n : null;
+  }
+  // Debit and credit the right way round for this kind of account (some files name them from the bank's side).
+  function orient(list, dir) {
+    const sw = list.map((t) => Object.assign({}, t, { dr: t.cr, cr: t.dr }));
+    const a = fitScore(list, dir), b = fitScore(sw, dir);
+    return b != null && (a == null || b > a + 0.2) ? { rows: sw, fit: b } : { rows: list, fit: a };
   }
 
   // PDF text: joined into one stream, then cut into one chunk per transaction date
@@ -1900,7 +1968,9 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   const AMT_RE = /(?<![\w.\/:])(?:\d{1,3}(?:,\d{2,3})+|\d+)\.\d{2}(?!\d)(?:\s?(?:Cr|Dr)\b\.?)?/gi;
   const DATE_RE = /(?<![\w\/.:-])(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/.-]\d{1,2}[\/.-](?:\d{4}|\d{2})|\d{1,2}[\s-][A-Za-z]{3,9}[\s,-]+\d{4})(?![\w\/.:-])/g;
   const SUFFIX = /(cr|dr)\.?$/i;
-  function parseLines(lines) {
+  // lineStart: a date counts as a new row only at the start of a line (after an optional serial number), so a value
+  // date printed mid-row (e.g. after the description, as HDFC does) doesn't split the row. Both ways are tried.
+  function parseLines(lines, lineStart) {
     const text = lines.map(String).join("\n");
     const hits = [];
     let m;
@@ -1908,6 +1978,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     while ((m = DATE_RE.exec(text))) { const d = matchDate(m[0]); if (d) hits.push({ date: d.date, s: m.index, e: m.index + m[0].length }); }
     const starts = [];
     for (let i = 0; i < hits.length; i++) {
+      if (lineStart && !/^\s*\d{0,5}\s*$/.test(text.slice(text.lastIndexOf("\n", hits[i].s - 1) + 1, hits[i].s))) continue;
       starts.push(hits[i]);
       if (hits[i + 1] && /^\s*$/.test(text.slice(hits[i].e, hits[i + 1].s))) { hits[i].e = hits[i + 1].e; i++; }
     }
@@ -1938,7 +2009,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         if (/-\s*$/.test(before)) cr = v;
         else if (/-/.test(chunk.slice(run[0].e, run[1].s))) dr = v;
       } else if (run.length >= 3) { dr = amt(run[run.length - 3].t); cr = amt(run[run.length - 2].t); }
-      let desc = before.replace(/\s+-\s*$/, "").replace(/^\s*-\s*$/, "").replace(/\s+/g, " ").trim();
+      let desc = before.replace(DATE_RE, " ").replace(/\s+-\s*$/, "").replace(/^\s*-\s*$/, "").replace(/\s+/g, " ").trim();
       if (!desc && /^\s*\d*\s*$/.test(lineHead)) {
         const above = textLines(prevTail.slice(0, prevTail.length - lineHead.length));
         const below = textLines(chunk.slice(run[run.length - 1].e).split("\n").slice(1, 2).join("\n"));
@@ -1992,37 +2063,153 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   let parsed = null;
   const upMsg = (t, cls) => { const el = $("up-msg"); el.textContent = t; el.className = "small " + (cls || ""); };
 
-  // Reads a bank statement file (PDF, Excel or CSV) into raw rows {date, bal, dr, cr, desc}.
-  async function readStatementFile(f, password) {
+  // Saved column choices: per person in the database (users/<uid>/bankProfiles), or in this browser without sign-in.
+  const djb2 = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return h.toString(16); };
+  async function loadProfiles() {
+    if (bankProfiles) return;
+    bankProfiles = {};
+    const u = window.firebase && firebase.auth && firebase.auth().currentUser;
+    try {
+      if (u) (await firebase.firestore().collection("users/" + u.uid + "/bankProfiles").get()).docs.forEach((d) => { const p = d.data(); if (p.sig && p.map) bankProfiles[p.sig] = p.map; });
+      else Object.assign(bankProfiles, JSON.parse(localStorage.getItem("alt-bank-profiles") || "{}"));
+    } catch (e) {}
+  }
+  async function saveProfile(sig, map) {
+    bankProfiles = bankProfiles || {};
+    bankProfiles[sig] = map;
+    const u = window.firebase && firebase.auth && firebase.auth().currentUser;
+    try {
+      if (u) await firebase.firestore().doc("users/" + u.uid + "/bankProfiles/" + djb2(sig)).set({ sig, map, savedAt: new Date().toISOString() });
+      else localStorage.setItem("alt-bank-profiles", JSON.stringify(bankProfiles));
+    } catch (e) {}
+  }
+
+  // Reads a bank statement file (PDF, Excel or CSV) into raw rows {date, bal, dr, cr, desc}, with how well the balances
+  // add up (fit) and, for a spreadsheet, its rows so the columns can be chosen by hand. kind: "sav" or "loan".
+  async function readStatementFile(f, password, kind) {
+    const dir = kind === "loan" ? -1 : 1;
     const ext = f.name.split(".").pop().toLowerCase();
-    if (ext === "pdf") return parseLines(await pdfLines(new Uint8Array(await f.arrayBuffer()), password));
+    const score = (r) => (r.fit == null ? -1 : r.fit);
+    if (ext === "pdf") {
+      const lines = await pdfLines(new Uint8Array(await f.arrayBuffer()), password);
+      const a = orient(parseLines(lines, false), dir), b = orient(parseLines(lines, true), dir);
+      // Rows starting only at line starts win when the balances add up better, or equally well with as many rows and
+      // more descriptions kept (a mid-row value date otherwise cuts the description off).
+      const descs = (r) => r.rows.filter((t) => t.desc).length;
+      const r = score(b) > score(a) + 0.05 || (score(b) >= score(a) && b.rows.length >= a.rows.length && descs(b) > descs(a)) ? b : a;
+      return { rows: r.rows, fit: r.fit, sheet: null };
+    }
     await loadScript(XLSX_SRC);
+    await loadProfiles();
     const wb = ext === "csv"
       ? XLSX.read(await f.text(), { type: "string", raw: true })
       : XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array", cellDates: true });
+    let first = null;
     for (const name of wb.SheetNames) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: "" });
-      let r = parseTable(rows);
-      if (!r || !r.length) r = parseLines(rows.map(x => x.map(c => c instanceof Date ? anyDate(c) : c).join("  ")));
-      if (r && r.length) return r;
+      if (!rows.length) continue;
+      if (!first) first = rows;
+      const h = findHeader(rows);
+      if (h) {
+        const r = orient(readRows(rows, h.start, h.map), dir);
+        if (r.rows.length) return { rows: r.rows, fit: r.fit, sheet: { rows, header: h } };
+      }
+      const p = orient(parseLines(rows.map((x) => x.map((c) => c instanceof Date ? anyDate(c) : c).join("  ")), false), dir);
+      if (p.rows.length) return { rows: p.rows, fit: p.fit, sheet: { rows, header: h } };
     }
-    return [];
+    return { rows: [], fit: null, sheet: first ? { rows: first, header: null } : null };
   }
+  const fitNote = (fit) => fit == null ? "" : fit >= 0.95 ? " Balances add up on every row checked." :
+    " Balances add up on only " + Math.round(fit * 100) + "% of rows, so some columns may be wrong: check below.";
+
+  // ---------- choosing the columns by hand (Excel / CSV) ----------
+  const MAP_FIELDS = [["date", "Date", true], ["desc", "Description", false], ["dr", "Withdrawal / debit", false], ["cr", "Deposit / credit", false],
+    ["amount", "Amount (one column for both)", false], ["type", "Dr / Cr column", false], ["bal", "Balance", true]];
+  const sheets = { sav: null, loan: null };
+  let mapCtx = null, mapQueue = [];
+  const colName = (k) => { let s = ""; k++; while (k > 0) { const m = (k - 1) % 26; s = String.fromCharCode(65 + m) + s; k = Math.floor((k - 1) / 26); } return s; };
+  function openMapper(kind, why) {
+    const sh = sheets[kind];
+    if (!sh) return;
+    if (mapCtx && mapCtx.kind !== kind) { if (mapQueue.indexOf(kind) < 0) mapQueue.push(kind); return; }
+    const rows = sh.rows;
+    let at = sh.header ? sh.header.at : rows.findIndex((r) => r.filter((c) => cellText(c)).length >= 3);
+    if (at < 0) at = 0;
+    mapCtx = { kind, rows, at, map: sh.header ? Object.assign({}, sh.header.map) : guessColumns(rows[at].map(cellText)) };
+    $("map-title").textContent = (kind === "loan" ? "Home loan" : "Savings") + " statement: choose the columns";
+    $("map-why").textContent = why || "Pick which column holds what. Rows without a date and a balance are skipped.";
+    $("map-err").hidden = true;
+    renderMapper();
+    $("map-box").hidden = false;
+    $("map-box").scrollIntoView({ block: "nearest" });
+  }
+  function renderMapper() {
+    const { rows, at, map } = mapCtx;
+    const width = Math.min(30, Math.max(...rows.slice(at, at + 12).map((r) => r.length), 1));
+    const head = rows[at] || [];
+    const label = (k) => colName(k) + (cellText(head[k]) ? ": " + String(head[k]).trim().slice(0, 28) : "");
+    const opts = (sel) => "<option value='-1'>(none)</option>" + Array.from({ length: width }, (_, k) => "<option value='" + k + "'" + (k === sel ? " selected" : "") + ">" + esc(label(k)) + "</option>").join("");
+    const headOpts = rows.slice(0, 40).map((r, i) => {
+      const txt = r.map((c) => c instanceof Date ? anyDate(c) : String(c == null ? "" : c).trim()).filter(Boolean).join(" · ").slice(0, 70);
+      return txt ? "<option value='" + i + "'" + (i === at ? " selected" : "") + ">Row " + (i + 1) + ": " + esc(txt) + "</option>" : "";
+    }).join("");
+    $("map-fields").innerHTML = "<label class='field'><span>Header row (column names)</span><select id='map-head'>" + headOpts + "</select></label>" +
+      MAP_FIELDS.map(([k, name, need]) => "<label class='field'><span>" + esc(name) + (need ? "" : " <em class='muted'>(optional)</em>") + "</span><select data-map='" + k + "'>" + opts(map[k]) + "</select></label>").join("");
+    $("map-thead").innerHTML = "<tr>" + Array.from({ length: width }, (_, k) => "<th>" + esc(label(k)) + "</th>").join("") + "</tr>";
+    $("map-tbody").innerHTML = rows.slice(at + 1, at + 7).map((r) => "<tr>" + Array.from({ length: width }, (_, k) => {
+      const c = r[k]; return "<td>" + esc(c instanceof Date ? anyDate(c) : String(c == null ? "" : c)) + "</td>"; }).join("") + "</tr>").join("");
+  }
+  $("map-fields").addEventListener("change", (e) => {
+    if (!mapCtx) return;
+    if (e.target.id === "map-head") { mapCtx.at = +e.target.value; mapCtx.map = guessColumns((mapCtx.rows[mapCtx.at] || []).map(cellText)); renderMapper(); return; }
+    const k = e.target.dataset.map; if (k) mapCtx.map[k] = +e.target.value;
+  });
+  function closeMapper() {
+    mapCtx = null; $("map-box").hidden = true;
+    const next = mapQueue.shift();
+    if (next) openMapper(next, (next === "loan" ? "Home loan" : "Savings") + ": choose the columns for this file too.");
+  }
+  $("map-cancel").addEventListener("click", closeMapper);
+  $("map-use").addEventListener("click", async () => {
+    if (!mapCtx) return;
+    const { kind, rows, at, map } = mapCtx;
+    const err = (t) => { $("map-err").textContent = t; $("map-err").hidden = false; };
+    if (map.date < 0 || map.bal < 0) { err("Choose at least the Date and the Balance columns."); return; }
+    const r = orient(readRows(rows, at + 1, map), kind === "loan" ? -1 : 1);
+    if (!r.rows.length) { err("No rows with a date and a balance under that header. Check the header row and the columns."); return; }
+    const cells = (rows[at] || []).map(cellText);
+    if (cells.some(Boolean)) await saveProfile(sigOf(cells), Object.assign({}, map));
+    sheets[kind] = { rows, header: { at, start: at + 1, cells, map: Object.assign({}, map), saved: true } };
+    if (kind === "loan") { loanParsed = loanEntries(r.rows); showLoanPreview(r.fit); }
+    else { parsed = normalize(r.rows); showPreview(r.fit); }
+    $("imp-bar").hidden = !(parsed || loanParsed);
+    closeMapper();
+  });
+  $("up-map-btn").addEventListener("click", () => openMapper("sav"));
+  $("ln-map-btn").addEventListener("click", () => openMapper("loan"));
 
   // Both statements are read together: savings (daily balances) and home loan (paid out, interest, EMI received).
   $("up-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = $("up-file").files[0], lf = $("ln-file").files[0];
     if (!f && !lf) { upMsg("Choose at least one statement file.", "bad"); return; }
-    parsed = null; loanParsed = null;
-    $("up-preview").hidden = true; $("ln-preview").hidden = true; $("imp-bar").hidden = true;
+    parsed = null; loanParsed = null; sheets.sav = null; sheets.loan = null; mapQueue = []; mapCtx = null;
+    $("up-preview").hidden = true; $("ln-preview").hidden = true; $("imp-bar").hidden = true; $("map-box").hidden = true;
     upMsg(""); lnMsg("");
     if (f) {
       upMsg("Reading " + f.name + "…");
       try {
-        parsed = normalize(await readStatementFile(f, $("up-pass").value));
-        if (!parsed.length) { parsed = null; upMsg("Savings: no transactions found. The file needs a date and a balance on each row. If it is a scanned PDF, download it again as Excel or CSV.", "bad"); }
-        else showPreview();
+        const res = await readStatementFile(f, $("up-pass").value, "sav");
+        sheets.sav = res.sheet;
+        parsed = normalize(res.rows);
+        if (!parsed.length) {
+          parsed = null;
+          if (res.sheet) { upMsg("Savings: the columns couldn't be found automatically. Choose them below; this layout is remembered next time.", "bad"); openMapper("sav"); }
+          else upMsg("Savings: no transactions found. The file needs a date and a balance on each row. If it is a scanned PDF, download the statement as Excel or CSV instead.", "bad");
+        } else {
+          showPreview(res.fit);
+          if (res.sheet && res.fit != null && res.fit < 0.8) openMapper("sav", "The balances don't add up on many rows, so the columns may be wrong. Check them here.");
+        }
       } catch (err) {
         if (err && err.name === "PasswordException") {
           $("up-pass-wrap").hidden = false;
@@ -2034,7 +2221,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     $("imp-bar").hidden = !(parsed || loanParsed);
   });
 
-  function showPreview() {
+  function showPreview(fit) {
     const days = new Set(parsed.map(t => t.date)).size;
     const tin = parsed.reduce((a, t) => a + t.in, 0), tout = parsed.reduce((a, t) => a + t.out, 0);
     const first = parsed[0], last = parsed[parsed.length - 1];
@@ -2044,11 +2231,12 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     $("up-body").innerHTML = parsed.map(t => "<tr><td>" + fmtDay(toDay(t.date)) + "</td><td class='desc' title='" + esc(t.desc) + "'>" + esc(t.desc) + "</td><td class='good'>" + (t.in ? rs2(t.in) : "") + "</td><td class='bad'>" + (t.out ? rs2(t.out) : "") + "</td><td>" + rs2(t.bal) + "</td></tr>").join("");
     $("up-preview").hidden = false;
     delete PAGE["up-body"]; pageTable("up-body");
-    upMsg("Savings: check that the balances match your statement. Days already in the tracker are replaced by the statement.");
+    $("up-map-btn").hidden = !sheets.sav;
+    upMsg("Savings: check that the balances match your statement. Days already in the tracker are replaced by the statement." + fitNote(fit), fit != null && fit < 0.8 ? "bad" : "");
   }
   $("up-cancel").addEventListener("click", () => {
-    parsed = null; loanParsed = null;
-    $("up-preview").hidden = true; $("ln-preview").hidden = true; $("imp-bar").hidden = true;
+    parsed = null; loanParsed = null; mapCtx = null; mapQueue = [];
+    $("up-preview").hidden = true; $("ln-preview").hidden = true; $("imp-bar").hidden = true; $("map-box").hidden = true;
     upMsg(""); lnMsg("");
   });
 
@@ -2443,17 +2631,29 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
   }
   let loanParsed = null;
   const lnMsg = (t, cls) => { $("ln-msg").textContent = t; $("ln-msg").className = "small " + (cls || ""); };
+  function showLoanPreview(fit) {
+    $("ln-body").innerHTML = loanParsed.map(x => "<tr><td>" + fmtDay(toDay(x.date)) + "</td><td style='font-family:var(--font-body)'>" + LOAN_KIND[x.kind] + "</td><td>" + rs2(x.amount) +
+      "</td><td>" + rs2(x.outstanding) + "</td><td class='desc' title='" + esc(x.desc) + "'>" + esc(x.desc) + "</td></tr>").join("");
+    $("ln-preview").hidden = false;
+    $("ln-map-btn").hidden = !sheets.loan;
+    delete PAGE["ln-body"]; pageTable("ln-body");
+    const n = (k) => loanParsed.filter(x => x.kind === k).length;
+    lnMsg("Home loan: found " + n("disb") + " paid-out, " + n("interest") + " interest and " + n("payment") + " payment entries." + fitNote(fit), fit != null && fit < 0.8 ? "bad" : "");
+  }
   async function readLoanFile(f) {
     lnMsg("Reading " + f.name + "…");
     try {
-      loanParsed = loanEntries(await readStatementFile(f, $("ln-pass").value));
-      if (!loanParsed.length) { loanParsed = null; lnMsg("Home loan: no entries found. Download the loan statement again as PDF or Excel from bob World.", "bad"); return; }
-      $("ln-body").innerHTML = loanParsed.map(x => "<tr><td>" + fmtDay(toDay(x.date)) + "</td><td style='font-family:var(--font-body)'>" + LOAN_KIND[x.kind] + "</td><td>" + rs2(x.amount) +
-        "</td><td>" + rs2(x.outstanding) + "</td><td class='desc' title='" + esc(x.desc) + "'>" + esc(x.desc) + "</td></tr>").join("");
-      $("ln-preview").hidden = false;
-      delete PAGE["ln-body"]; pageTable("ln-body");
-      const n = (k) => loanParsed.filter(x => x.kind === k).length;
-      lnMsg("Home loan: found " + n("disb") + " paid-out, " + n("interest") + " interest and " + n("payment") + " payment entries.");
+      const res = await readStatementFile(f, $("ln-pass").value, "loan");
+      sheets.loan = res.sheet;
+      loanParsed = loanEntries(res.rows);
+      if (!loanParsed.length) {
+        loanParsed = null;
+        if (res.sheet) { lnMsg("Home loan: the columns couldn't be found automatically. Choose them below; this layout is remembered next time.", "bad"); openMapper("loan"); }
+        else lnMsg("Home loan: no entries found. Download the loan statement again from your bank's site or app, as PDF or Excel.", "bad");
+        return;
+      }
+      showLoanPreview(res.fit);
+      if (res.sheet && res.fit != null && res.fit < 0.8) openMapper("loan", "The outstanding doesn't add up on many rows, so the columns may be wrong. Check them here.");
     } catch (err) {
       loanParsed = null;
       if (err && err.name === "PasswordException") {
@@ -3250,6 +3450,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       loading: { title: "One moment", lead: "Checking your sign-in", msg: "Looking up your account and your access to this tracker." },
       signin: { title: "Sign in", lead: "to continue to Advantage Loan Tracker", msg: "Use your Google account to track your own loans, or to open a loan someone shared with you." },
       request: { title: "Ask for access", lead: "This loan is private", msg: "This account doesn't have access to this loan yet. Send a request and the owner will approve it from their tracker." },
+      gone: { title: "Loan not found", lead: "It may have been deleted", msg: "This loan doesn't exist any more, or the link is wrong. Open My loans to see your loans and the ones shared with you." },
       pending: { title: "Request sent", lead: "Waiting for the owner", note: "Your request is with the owner. This page opens by itself as soon as it is approved, so you can leave it open." },
       denied: { title: "No access", lead: "The owner declined this request", note: "You can't see this tracker with this account. Sign in with a different Google account, or ask the owner directly." }
     };
@@ -3278,7 +3479,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       $("gate-request").hidden = mode !== "request";
       $("gate-switch").hidden = mode !== "denied";
       $("gate-signout").hidden = mode === "signin" || mode === "loading";
-      $("gate-home").hidden = !(mode === "request" || mode === "pending" || mode === "denied");
+      $("gate-home").hidden = !(mode === "request" || mode === "pending" || mode === "denied" || mode === "gone");
     };
     gate("loading");
     $("gate-signin").addEventListener("click", () => {
@@ -3441,7 +3642,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     });
 
     // ---------- open one loan: owner, admin, viewer, or the request flow ----------
-    async function openLoan(user, id) {
+    async function openLoan(user, id, fromLast) {
       const fs = fsdb();
       LOAN_ID = id; BASE = "loans/" + id + "/";
       const scoped = { collection: (c) => fs.collection(BASE + c), doc: (p) => fs.doc(BASE + p) };
@@ -3449,7 +3650,15 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       gate("loading");
       let head = null;
       // Readable only by the owner and approved people; anyone else gets "permission denied" and the request flow.
-      try { const s = await fs.doc("loans/" + id).get(); head = s.exists ? s.data() : null; } catch (e) { head = null; }
+      // A loan that doesn't exist (deleted, or a wrong link) reads as "not found"; one you have no access to is refused.
+      let gone = false;
+      try { const s = await fs.doc("loans/" + id).get(); head = s.exists ? s.data() : null; gone = !s.exists; } catch (e) { head = null; }
+      if (gone) {
+        userDoc(user).get().then((u) => { if (u.exists && u.data().lastLoanId === id) userDoc(user).set({ lastLoanId: "" }, { merge: true }); }).catch(() => {});
+        if (fromLast) { history.replaceState(null, "", "/?home"); showHome(user); return; }
+        gate("gone", user.email);
+        return;
+      }
       const showHead = (h) => { if (h) { $("loan-label").textContent = (h.bank ? h.bank + " · " : "") + (h.name || "Home loan"); document.title = (h.name || "Loan") + " · Advantage Loan Tracker"; } };
       showHead(head);
       if (head && head.ownerUid === user.uid) {
@@ -3552,7 +3761,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         try {
           const u = await userDoc(user).get();
           const last = u.exists ? u.data().lastLoanId : "";
-          if (last) { history.replaceState(null, "", "/?loan=" + encodeURIComponent(last) + location.hash); openLoan(user, last); return; }
+          if (last) { history.replaceState(null, "", "/?loan=" + encodeURIComponent(last) + location.hash); openLoan(user, last, true); return; }
         } catch (e) {}
       }
       showHome(user);

@@ -112,7 +112,7 @@ a { color: var(--accent); }
     <div class="tabs">
       <div><b>Overview</b>Outstanding, savings balance, the amount interest is charged on, the next EMI split, today's interest, interest saved, the projected payoff date, milestones and an outstanding-over-time chart.</div>
       <div><b>Daily interest</b>A day-by-day table for any EMI period: money in and out, savings balance, outstanding, interest for the day and the running total.</div>
-      <div><b>Savings balance</b>Upload statements (PDF, Excel, CSV; password-protected PDFs work), add or paste balances, record extra payments (part-prepayments).</div>
+      <div><b>Savings balance</b>Upload statements from any bank (PDF, Excel, CSV; password-protected PDFs work; choose the columns yourself if a layout isn't recognised), add or paste balances, record extra payments (part-prepayments).</div>
       <div><b>History</b>EMIs paid, the tracker's interest vs the bank's, <i>Bank match</i>, and a year report you can print or save as PDF.</div>
       <div><b>Schedule</b>Month-by-month and yearly amortisation for the whole tenure: the past from real data, the future projected.</div>
       <div><b>What-if</b>Try a different savings balance, a repo-rate change, or a bonus/lump sum (keep it in savings vs prepay) and see the effect.</div>
@@ -161,8 +161,11 @@ a { color: var(--accent); }
 
     <h2 id="limits">9. Good to know</h2>
     <ul>
-      <li>Reading statement <b>files</b> automatically is tuned to Bank of Baroda (bob World) layouts today. For other
-        banks, enter or paste balances and statement interest by hand; support for more banks' files is being added.</li>
+      <li><b>Statements from any bank</b> can be read: Excel and CSV files are read by their column names (date, debit/withdrawal,
+        credit/deposit or amount with Dr/Cr, balance), and every row is checked to add up. If a file's columns aren't
+        recognised, or the balances don't add up, you choose the columns once and the layout is remembered.
+        PDFs are read from their text; if one comes out wrong, download the same statement as Excel or CSV.
+        Scanned (image) PDFs can't be read.</li>
       <li>Figures after today are estimates. For tax filing, use your bank's interest certificate.</li>
       <li>The app works on phones and can be installed (account menu → <i>Install app</i>); it keeps an offline copy.</li>
     </ul>

@@ -206,6 +206,10 @@ const cases = [
   tc("admin can't delete loan head", "DENY", ADMIN, "delete", "/loans/L1", { status: "approved", role: "admin", existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
   tc("owner invites by email", "ALLOW", OWNER, "create", `access/${FRIEND}`, { data: { email: FRIEND, status: "approved", role: "viewer" } }),
   tc("request can't self-approve on another loan", "DENY", STRANGER, "create", `/loans/L2/access/${STRANGER}`, { data: { email: STRANGER, name: "S", status: "approved", requestedAt: "x" } }),
+  // (A signed-in read of a loan that doesn't exist is allowed via resource == null; the Rules test API can't model a
+  // missing resource, so that case is checked against the live database instead.)
+  tc("signed-out can't even check a missing loan", "DENY", null, "get", "/loans/L404"),
+  tc("stranger still can't read an existing loan head", "DENY", STRANGER, "get", "/loans/L1", { existing: { ownerUid: uidOf(OWNER), ownerEmail: OWNER } }),
   // ---- inbox: "shared with me" pointers ----
   tc("owner writes inbox pointer", "ALLOW", OWNER, "create", `/inbox/${FRIEND}/loans/L1`, { data: { name: "Home", ownerEmail: OWNER, role: "viewer", sharedAt: "x" } }),
   tc("owner can't add odd fields to inbox", "DENY", OWNER, "create", `/inbox/${FRIEND}/loans/L1`, { data: { name: "Home", status: "approved" } }),

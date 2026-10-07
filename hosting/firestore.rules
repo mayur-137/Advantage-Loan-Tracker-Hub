@@ -54,7 +54,8 @@ service cloud.firestore {
     match /loans/{id} {
       // Readable by the owner and by approved people. Listing: your own loans (where ownerUid == my uid); the
       // administrator lists them all. (A query can't use the per-loan access check, so list has its own rule.)
-      allow get: if signedIn() && (isSuper() || resource.data.ownerUid == request.auth.uid || isViewer(id));
+      // (A loan that doesn't exist can be "read" as missing, so a deleted loan's link says "not found", not "ask for access".)
+      allow get: if signedIn() && (resource == null || isSuper() || resource.data.ownerUid == request.auth.uid || isViewer(id));
       allow list: if signedIn() && (isSuper() || resource.data.ownerUid == request.auth.uid);
       // Anyone signed in can start a loan of their own.
       allow create: if signedIn()
