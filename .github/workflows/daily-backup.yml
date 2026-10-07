@@ -1,13 +1,13 @@
-# Daily backup of the loan tracker database, in GitHub's cloud (no PC needed).
+# Daily backup of every user's loans, in GitHub's cloud (no PC needed).
 # Runs hosting/backup.js every day at 23:30 IST, and on demand from the Actions tab ("Run workflow").
 # Needs the repository secret FIREBASE_SA_KEY: the JSON key of a Google Cloud service account with the
-# "Cloud Datastore User" role in project advantage-loan-tracker. The log shows only counts and a short hash.
+# "Cloud Datastore User" role in project advantage-loan-tracker-hub. The log shows no names or emails: only a short
+# loan id, counts and a short hash per loan.
 name: Daily backup
 
 on:
-  # Schedule is off until the Hub's Firebase project and FIREBASE_SA_KEY secret exist.
-  # schedule:
-  #   - cron: "0 18 * * *" # 18:00 UTC = 23:30 IST
+  schedule:
+    - cron: "0 18 * * *" # 18:00 UTC = 23:30 IST
   workflow_dispatch:
 
 permissions:
@@ -16,7 +16,7 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

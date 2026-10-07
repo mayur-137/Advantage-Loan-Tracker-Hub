@@ -145,7 +145,13 @@ The engine and UI were checked by loading `index.html` in jsdom and comparing ag
 
 ## Daily backup setup (one time)
 
-1. Google Cloud console, project `advantage-loan-tracker` → *IAM & Admin → Service accounts* → **Create service account** `backup-bot` → role **Cloud Datastore User** → Done.
+Every night at 23:30 IST GitHub Actions (`.github/workflows/daily-backup.yml`) runs `hosting/backup.js`, which backs up
+**every loan of every user** into `loans/<loanId>/backups/<date>` (an identical copy of the day before replaces it;
+loans being deleted are skipped). It needs a service-account key in the repository secret `FIREBASE_SA_KEY`:
+
+1. Google Cloud console, project `advantage-loan-tracker-hub` → *IAM & Admin → Service accounts* → **Create service account** `backup-bot` → role **Cloud Datastore User** → Done.
 2. Open `backup-bot` → *Keys* → **Add key → Create new key → JSON** (a file downloads; keep it private).
-3. GitHub repo → *Settings → Secrets and variables → Actions* → **New repository secret** `FIREBASE_SA_KEY` = the whole content of that file. Then delete the file from the PC.
-4. GitHub → *Actions → Daily backup → Run workflow* once; the log ends with `Saved backup …`.
+3. GitHub repo `Advantage-Loan-Tracker-Hub` → *Settings → Secrets and variables → Actions* → **New repository secret** `FIREBASE_SA_KEY` = the whole content of that file. Then delete the file from the PC.
+4. GitHub → *Actions → Daily backup → Run workflow* once; the log ends with `Done: N backed up …`.
+
+By hand (with the Firebase CLI login): `cd hosting && node backup.js` (all loans) or `node backup.js <loanId>`.

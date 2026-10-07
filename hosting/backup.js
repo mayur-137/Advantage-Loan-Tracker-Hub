@@ -1,9 +1,10 @@
-// Daily backup of the whole tracker into Firestore backups/<id>, built from the server (Firestore REST), never from a
-// browser cache. Run by GitHub Actions every day (service account key in FIREBASE_SA_KEY, see
-// .github/workflows/daily-backup.yml) or by hand with the Firebase CLI login: node backup.js
-// The website makes the same backup when the owner opens it (index.html, runBackup): same layout, same hash.
-// If the new backup is identical (same hash) to the newest earlier one, the older one is deleted; backups without a
-// hash (made before daily backups) are never deleted.
+// Daily backup of every loan, into Firestore loans/<loanId>/backups/<id>, built from the server (Firestore REST), never
+// from a browser cache. Run by GitHub Actions every night (service account key in FIREBASE_SA_KEY, see
+// .github/workflows/daily-backup.yml) or by hand with the Firebase CLI login: node backup.js [loanId]
+// The website makes the same backup when a loan's owner opens it (index.html, runBackup): same layout, same hash.
+// If a loan's new backup is identical (same hash) to its newest earlier one, the older one is deleted; backups without
+// a hash are never deleted. Loans being deleted are skipped. The log shows no names or emails: only a short loan id,
+// counts and a short hash. node backup.js --dry only reads (and compares with the newest backup).
 const crypto = require("crypto");
 
 const PROJECT = "advantage-loan-tracker-hub";
@@ -44,20 +45,22 @@ const snapshotHash = (snap) => crypto.createHash("sha256").update(JSON.stringify
 // Backup ids use the date and time in India.
 function ist(now) { const t = new Date(now.getTime() + 330 * 60000).toISOString(); return { day: t.slice(0, 10), time: t.slice(11, 19).replace(/:/g, "") }; }
 
-async function runBackup({ fetchFn = fetch, token, now = new Date(), manual = false, log = console.log }) {
+// One loan's backup. base is the loan's document URL (BASE + "/loans/<id>").
+async function runBackup({ fetchFn = fetch, token, base, now = new Date(), manual = false, dry = false, log = console.log }) {
   const headers = { Authorization: "Bearer " + token, "Content-Type": "application/json" };
+  const ROOT = base;
   const call = async (method, url, body) => {
     const r = await fetchFn(url, { method, headers, body: body && JSON.stringify(body) });
     if (r.status === 404 && method === "GET") return null;
-    if (!r.ok) throw new Error(`${method} ${url.replace(BASE, "")} -> ${r.status}`);
+    if (!r.ok) throw new Error(`${method} ${url.replace(ROOT, "")} -> ${r.status}`);
     return method === "DELETE" ? true : r.json();
   };
-  const getDoc = async (path) => { const d = await call("GET", `${BASE}/${path}`); return d ? fromFields(d.fields) : null; };
+  const getDoc = async (path) => { const d = await call("GET", `${ROOT}/${path}`); return d ? fromFields(d.fields) : null; };
   const list = async (col) => {
     const rows = [];
     let page = "";
     do {
-      const res = (await call("GET", `${BASE}/${col}?pageSize=300${page ? "&pageToken=" + encodeURIComponent(page) : ""}`)) || {};
+      const res = (await call("GET", `${ROOT}/${col}?pageSize=300${page ? "&pageToken=" + encodeURIComponent(page) : ""}`)) || {};
       for (const d of res.documents || []) rows.push({ id: decodeURIComponent(d.name.split("/").pop()), data: fromFields(d.fields) });
       page = res.nextPageToken || "";
     } while (page);
@@ -69,13 +72,19 @@ async function runBackup({ fetchFn = fetch, token, now = new Date(), manual = fa
   for (const k of PRIVATE) { const d = await getDoc(`private/${k}`); if (d) snap.private[k] = d; }
   for (const c of COLS) snap.cols[c] = await list(c);
   const hash = snapshotHash(snap);
+  if (dry) {
+    // Reads only: compare with the newest backup the website (or an earlier run) made.
+    const newest = (await list("backups")).sort((a, b) => ((a.data.created || "") < (b.data.created || "") ? 1 : -1))[0];
+    log(`  dry run: hash ${hash.slice(0, 12)}; newest backup ${newest ? newest.id + " " + String(newest.data.hash || "").slice(0, 12) + (newest.data.hash === hash ? " (same data)" : " (data changed since)") : "none"}`);
+    return { id: null, hash, replaced: null, counts: null };
+  }
 
   // 2. Save it as a new backup.
   const heads = await list("backups");
   const prev = heads.slice().sort((a, b) => ((a.data.created || "") < (b.data.created || "") ? 1 : -1))[0];
   const { day, time } = ist(now);
   const id = manual || heads.some((h) => h.id === day) ? day + "_" + time : day;
-  const create = (collPath, docId, data) => call("POST", `${BASE}/${collPath}?documentId=${encodeURIComponent(docId)}`, { fields: toFields(data) });
+  const create = (collPath, docId, data) => call("POST", `${ROOT}/${collPath}?documentId=${encodeURIComponent(docId)}`, { fields: toFields(data) });
   await create(`backups/${id}/parts`, "settings", { settings: Object.assign({}, snap.loan, snap.salary) });
   for (const c of COLS) await create(`backups/${id}/parts`, c, { rows: snap.cols[c] });
   await create(`backups/${id}/parts`, "private", { docs: snap.private });
@@ -88,12 +97,12 @@ async function runBackup({ fetchFn = fetch, token, now = new Date(), manual = fa
   // 3. Same as the newest earlier backup: that older copy goes (parts first, the head last).
   let replaced = null;
   if (prev && prev.id !== id && prev.data.hash && prev.data.hash === hash) {
-    await call("PATCH", `${BASE}/backupsMeta/dedupe`, { fields: toFields({ newId: id, oldId: prev.id, at: now.toISOString() }) });
-    for (const p of PARTS) await call("DELETE", `${BASE}/backups/${prev.id}/parts/${p}`);
-    await call("DELETE", `${BASE}/backups/${prev.id}`);
+    await call("PATCH", `${ROOT}/backupsMeta/dedupe`, { fields: toFields({ newId: id, oldId: prev.id, at: now.toISOString() }) });
+    for (const p of PARTS) await call("DELETE", `${ROOT}/backups/${prev.id}/parts/${p}`);
+    await call("DELETE", `${ROOT}/backups/${prev.id}`);
     replaced = prev.id;
   }
-  log(`Saved backup ${id} (${COLS.map((c) => c + " " + counts[c]).join(", ")}, access ${counts.access}, private ${counts.private}), hash ${hash.slice(0, 12)}` +
+  log(`  saved ${id} (${COLS.map((c) => c + " " + counts[c]).join(", ")}, access ${counts.access}, private ${counts.private}), hash ${hash.slice(0, 12)}` +
     (replaced ? `; removed ${replaced}, it was identical` : ""));
   return { id, hash, replaced, counts };
 }
@@ -112,8 +121,37 @@ async function accessToken() {
   return (await auth.getAccessToken(tokens.refresh_token, [])).access_token;
 }
 
-module.exports = { runBackup, snapshotHash, canon, ist, decode, fromFields, encode, toFields, COLS, PRIVATE, PARTS };
+// Every loan (or just the ones named), one after another. A loan that fails doesn't stop the others; the run fails at
+// the end if any did, so GitHub shows it.
+async function runAll({ fetchFn = fetch, token, only = [], now = new Date(), dry = false, log = console.log }) {
+  const headers = { Authorization: "Bearer " + token };
+  const loans = [];
+  let page = "";
+  do {
+    const r = await fetchFn(`${BASE}/loans?pageSize=300${page ? "&pageToken=" + encodeURIComponent(page) : ""}`, { headers });
+    if (!r.ok) throw new Error(`GET loans -> ${r.status}`);
+    const res = await r.json();
+    for (const d of res.documents || []) loans.push({ id: d.name.split("/").pop(), data: fromFields(d.fields) });
+    page = res.nextPageToken || "";
+  } while (page);
+  const todo = loans.filter((l) => (!only.length || only.includes(l.id)) && !l.data.deleting);
+  log(`${loans.length} loans; backing up ${todo.length}` + (loans.length - todo.length ? ` (${loans.length - todo.length} skipped)` : ""));
+  let ok = 0, failed = 0, replaced = 0;
+  for (const l of todo) {
+    log(`loan ${l.id.slice(0, 6)}…`);
+    try {
+      const r = await runBackup({ fetchFn, token, base: `${BASE}/loans/${l.id}`, now, dry, log });
+      ok++; if (r.replaced) replaced++;
+    } catch (e) { failed++; log(`  FAILED: ${e.message}`); }
+  }
+  log(dry ? `Done (dry run, nothing written): ${ok} checked, ${failed} failed.` : `Done: ${ok} backed up (${replaced} identical to the day before, older copy removed), ${failed} failed.`);
+  if (failed) throw new Error(`${failed} of ${todo.length} loans failed`);
+  return { ok, failed, replaced, total: loans.length };
+}
+
+module.exports = { runBackup, runAll, snapshotHash, canon, ist, decode, fromFields, encode, toFields, COLS, PRIVATE, PARTS };
 
 if (require.main === module) {
-  accessToken().then((token) => runBackup({ token })).catch((e) => { console.error("BACKUP FAILED:", e.message); process.exit(1); });
+  const args = process.argv.slice(2), dry = args.includes("--dry");
+  accessToken().then((token) => runAll({ token, dry, only: args.filter((a) => a !== "--dry") })).catch((e) => { console.error("BACKUP FAILED:", e.message); process.exit(1); });
 }
