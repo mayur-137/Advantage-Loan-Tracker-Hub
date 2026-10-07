@@ -71,7 +71,7 @@ header.top { display: flex; flex-wrap: wrap; justify-content: space-between; ali
 .acct-head .chip { margin-top: 6px; }
 .acct-menu button[role="menuitem"] { border: 0; background: none; color: var(--fg); font: 500 .92rem var(--font-body); text-align: left; padding: 9px 12px; border-radius: 8px; cursor: pointer; }
 .acct-menu button[role="menuitem"]:hover, .acct-menu button[role="menuitem"]:focus-visible { background: var(--surface-2); }
-.acct-menu #signout { color: var(--bad); }
+.acct-menu #signout, .acct-menu #delloan-btn { color: var(--bad); }
 @media (max-width: 640px) { .acct-menu { right: auto; left: 0; } }
 
 nav.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); margin: 16px -16px 20px; padding: 8px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
@@ -260,6 +260,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           </div>
           <button type="button" role="menuitem" id="myloans-btn" hidden>My loans</button>
           <button type="button" role="menuitem" id="install-btn" hidden>Install app</button>
+          <button type="button" role="menuitem" id="delloan-btn" hidden>Delete this loan</button>
           <button type="button" role="menuitem" id="signout">Sign out</button>
         </div>
       </div>
@@ -635,16 +636,6 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
       <p class="small muted" style="margin:0">Send the link to someone. They sign in with Google and ask for access. Once you approve, they can see this tracker but can't change anything, and they never see your salary. <b>Make admin</b> lets a person change everything and see your salary too (not backups or this Sharing list); remove admin to take it back. Remove someone to cut their access straight away.</p>
       <div class="tablebox"><table><thead><tr><th>Person</th><th>Status</th><th>Asked on</th><th></th></tr></thead><tbody id="share-body"></tbody></table></div>
     </div>
-    <div class="panel edit-only owner-only" id="del-panel" hidden>
-      <div class="panel-head"><h2>Delete this loan</h2></div>
-      <p class="small muted" style="margin:0">Deletes this loan and <b>everything in it</b> for good: loan settings, salary plan, balances, statements, rates, extra payments, tax and spending settings, the salary password, <b>all backups</b> and the sharing list. People it is shared with lose access straight away. This can't be undone. Download a backup file first if you may want the data later.</p>
-      <div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end">
-        <button class="btn ghost" type="button" id="del-backup">Download backup file</button>
-        <label class="field" style="flex:1;min-width:200px"><span>Type the loan's name to confirm: <b id="del-name"></b></span><input id="del-confirm" type="text" autocomplete="off"></label>
-        <button class="btn" type="button" id="del-go" style="background:var(--bad);border-color:var(--bad);color:#fff" disabled>Delete loan</button>
-      </div>
-      <p class="small" id="del-msg" style="margin:0"></p>
-    </div>
     <div class="panel">
       <h2>Loan details</h2>
       <form id="set-form" class="stack" style="gap:12px">
@@ -696,6 +687,16 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
         <button class="btn ghost" type="submit">Add rate</button>
       </form>
       <div class="tablebox"><table><thead><tr><th>From</th><th>Rate</th><th></th></tr></thead><tbody id="rate-body"></tbody></table></div>
+    </div>
+    <div class="panel edit-only owner-only" id="del-panel" hidden>
+      <div class="panel-head"><h2>Delete this loan</h2></div>
+      <p class="small muted" style="margin:0">Deletes this loan and <b>everything in it</b> for good: loan settings, salary plan, balances, statements, rates, extra payments, tax and spending settings, the salary password, <b>all backups</b> and the sharing list. People it is shared with lose access straight away. This can't be undone. Download a backup file first if you may want the data later.</p>
+      <div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end">
+        <button class="btn ghost" type="button" id="del-backup">Download backup file</button>
+        <label class="field" style="flex:1;min-width:200px"><span>Type the loan's name to confirm: <b id="del-name"></b></span><input id="del-confirm" type="text" autocomplete="off"></label>
+        <button class="btn" type="button" id="del-go" style="background:var(--bad);border-color:var(--bad);color:#fff" disabled>Delete loan</button>
+      </div>
+      <p class="small" id="del-msg" style="margin:0"></p>
     </div>
   </section>
 
@@ -2954,6 +2955,12 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
     $("del-go").disabled = !loanHead || $("del-confirm").value.trim() !== (loanHead.name || "").trim();
   });
   $("del-backup").addEventListener("click", () => $("bk-download").click());
+  // Account menu -> Delete this loan: opens Loan settings at the delete panel (the confirmations are there).
+  $("delloan-btn").addEventListener("click", () => {
+    acctMenu(false); showTab("settings");
+    $("del-panel").scrollIntoView({ block: "center" });
+    $("del-confirm").focus({ preventScroll: true });
+  });
   async function deleteLoan(resume) {
     const fs = firebase.firestore(), base = "loans/" + LOAN_ID, msg = (t) => { $("del-msg").textContent = t; };
     const user = firebase.auth().currentUser;
@@ -3228,6 +3235,7 @@ footer { margin-top: 28px; font-size: .8rem; color: var(--muted); max-width: 70c
           return;
         }
         $("del-panel").hidden = false;
+        $("delloan-btn").hidden = false;
         $("del-name").textContent = head.name || "";
         onFirstData = () => gate(null);
         $("share-panel").hidden = false;
