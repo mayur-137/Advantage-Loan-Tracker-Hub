@@ -5,8 +5,9 @@
 name: Daily backup
 
 on:
-  schedule:
-    - cron: "0 18 * * *" # 18:00 UTC = 23:30 IST
+  # Schedule is off until the Hub's Firebase project and FIREBASE_SA_KEY secret exist.
+  # schedule:
+  #   - cron: "0 18 * * *" # 18:00 UTC = 23:30 IST
   workflow_dispatch:
 
 permissions:
